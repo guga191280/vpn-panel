@@ -2,11 +2,16 @@ import sqlite3, time, requests, sys
 sys.path.insert(0, '/opt/vpn_panel/backend')
 
 DB_PATH = '/opt/vpn_panel/backend/vpn_panel.db'
-NODES = {
-    'main':  {'host': '127.0.0.1', 'port': 9090, 'secret': 'vpnpanel2024'},
-    'ru75':  {'host': 'ru75.alexanderoff.store', 'port': 9090, 'secret': 'vpnpanel2024'},
-}
 _prev = {}
+
+def get_nodes():
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute("SELECT id, host FROM nodes WHERE status='online'").fetchall()
+    conn.close()
+    result = {}
+    for r in rows:
+        result[r[0]] = {'host': r[1], 'port': 9090, 'secret': ''}
+    return result
 
 def get_settings():
     conn = sqlite3.connect(DB_PATH)
@@ -95,11 +100,13 @@ def check_limits():
 
 def monitor_loop():
     print("🔍 Мониторинг трафика запущен")
-    for node_id, node in NODES.items():
+    nodes = get_nodes()
+    for node_id, node in nodes.items():
         collect_node(node_id, node)
     while True:
         try:
-            for node_id, node in NODES.items():
+            nodes = get_nodes()
+            for node_id, node in nodes.items():
                 delta = collect_node(node_id, node)
                 if delta > 0:
                     update_db(node_id, delta)

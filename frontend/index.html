@@ -801,17 +801,10 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="modal-close" onclick="closeModal('modal-add-bridge')">×</div>
     </div>
     <div class="modal-body">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">🇷🇺 Russian сервер</div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">RU IP</label><input id="b-ru-ip" class="form-input" placeholder="185.40.4.169"></div>
-        <div class="form-group"><label class="form-label">SSH порт</label><input id="b-ru-port" class="form-input" value="22"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">SSH User</label><input id="b-ru-user" class="form-input" value="root"></div>
-        <div class="form-group"><label class="form-label">SSH Pass</label><input id="b-ru-pass" class="form-input" type="password"></div>
-      </div>
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin:16px 0 12px">🌍 Foreign сервер</div>
-      <div class="form-group"><label class="form-label">Foreign IP</label><input id="b-foreign-ip" class="form-input" placeholder="193.168.197.161"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">🇷🇺 Russian нода (входящий трафик)</div>
+      <div class="form-group"><label class="form-label">Выберите RU ноду</label><select id="b-ru-node" class="form-input"></select></div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin:16px 0 12px">🌍 Foreign нода (выходной трафик)</div>
+      <div class="form-group"><label class="form-label">Выберите Foreign ноду</label><select id="b-foreign-node" class="form-input"></select></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-add-bridge')">Отмена</button>
@@ -1568,16 +1561,33 @@ function loadBridges() {
 
 function delBridge(id){ if(!confirm('Удалить мост?')) return; api('DELETE','/bridges/'+id).then(function(){ loadBridges(); toast('✅ Удалено'); }); }
 
-document.getElementById('btn-add-bridge').onclick = function(){ openModal('modal-add-bridge'); };
+document.getElementById('btn-add-bridge').onclick = function(){
+  // Заполняем селекты нодами
+  api('GET','/nodes').then(function(nodes){
+    var ruSel = document.getElementById('b-ru-node');
+    var forSel = document.getElementById('b-foreign-node');
+    ruSel.innerHTML = '';
+    forSel.innerHTML = '';
+    nodes.forEach(function(n){
+      var opt1 = '<option value="'+n.id+'" data-host="'+n.host+'" data-ssh-user="'+(n.ssh_user||'root')+'" data-ssh-pass="'+(n.ssh_password||'')+'" data-ssh-port="'+(n.port||22)+'">'+n.name+' ('+n.host+')</option>';
+      ruSel.innerHTML += opt1;
+      forSel.innerHTML += opt1;
+    });
+  });
+  openModal('modal-add-bridge');
+};
 document.getElementById('btn-submit-bridge').onclick = function(){
   var btn=this; btn.disabled=true;
   api('POST','/bridges',{
-    node_id:'main',
-    ru_ip:document.getElementById('b-ru-ip').value.trim(),
-    foreign_ip:document.getElementById('b-foreign-ip').value.trim(),
-    ssh_port:parseInt(document.getElementById('b-ru-port').value)||22,
-    ssh_user:document.getElementById('b-ru-user').value.trim(),
-    ssh_password:document.getElementById('b-ru-pass').value
+    node_id:document.getElementById('b-ru-node').value,
+    ru_ip:document.getElementById('b-ru-node').selectedOptions[0].dataset.host,
+    foreign_ip:document.getElementById('b-foreign-node').selectedOptions[0].dataset.host,
+    ssh_port:parseInt(document.getElementById('b-ru-node').selectedOptions[0].dataset.sshPort)||22,
+    ssh_user:document.getElementById('b-ru-node').selectedOptions[0].dataset.sshUser||'root',
+    ssh_password:document.getElementById('b-ru-node').selectedOptions[0].dataset.sshPass||'',
+    foreign_ssh_port:parseInt(document.getElementById('b-foreign-node').selectedOptions[0].dataset.sshPort)||22,
+    foreign_ssh_user:document.getElementById('b-foreign-node').selectedOptions[0].dataset.sshUser||'root',
+    foreign_ssh_password:document.getElementById('b-foreign-node').selectedOptions[0].dataset.sshPass||''
   }).then(function(){ closeModal('modal-add-bridge'); btn.disabled=false; loadBridges(); toast('✅ Мост создан!'); });
 };
 

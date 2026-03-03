@@ -102,44 +102,44 @@ openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
     run_ssh(host, ssh_port, ssh_user, ssh_password, ssl_cmd)
 
     # 5. Создаём конфиг
-    config = {{
-        "log": {{"level": "info"}},
+    config = {
+        "log": {"level": "info"},
         "inbounds": [
-            {{
+            {
                 "type": "vless",
                 "tag": "vless-in",
                 "listen": "::",
                 "listen_port": vless_port,
-                "users": [{{"uuid": user_uuid, "flow": "xtls-rprx-vision"}}],
-                "tls": {{
+                "users": [{"uuid": user_uuid, "flow": "xtls-rprx-vision"}],
+                "tls": {
                     "enabled": True,
                     "server_name": "www.microsoft.com",
-                    "reality": {{
+                    "reality": {
                         "enabled": True,
-                        "handshake": {{"server": "www.microsoft.com", "server_port": 443}},
+                        "handshake": {"server": "www.microsoft.com", "server_port": 443},
                         "private_key": private_key,
                         "short_id": [short_id]
-                    }}
-                }}
-            }},
-            {{
+                    }
+                }
+            },
+            {
                 "type": "hysteria2",
                 "tag": "hysteria2-in",
                 "listen": "::",
                 "listen_port": hy2_port,
-                "users": [{{"password": user_uuid}}],
-                "tls": {{
+                "users": [{"password": user_uuid}],
+                "tls": {
                     "enabled": True,
                     "certificate_path": "/etc/sing-box/cert.pem",
                     "key_path": "/etc/sing-box/key.pem"
-                }}
-            }}
+                }
+            }
         ],
-        "outbounds": [{{"type": "direct", "tag": "direct"}}],
-        "route": {{"rules": [], "final": "direct"}}
-    }}
+        "outbounds": [{"type": "direct", "tag": "direct"}],
+        "route": {"rules": [], "final": "direct"}
+    }
     config_str = json.dumps(config, indent=2)
-    config_cmd = f"mkdir -p /etc/sing-box && cat > /etc/sing-box/config.json << 'ENDCFG'\n{config_str}\nENDCFG"
+    config_cmd = "mkdir -p /etc/sing-box && cat > /etc/sing-box/config.json << ENDCFG\n" + config_str + "\nENDCFG"
     run_ssh(host, ssh_port, ssh_user, ssh_password, config_cmd)
 
     # 6. Запускаем sing-box сервис

@@ -1,0 +1,2412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPN Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #090c10;
+  --bg2: #0d1117;
+  --bg3: #161b22;
+  --bg4: #1c2333;
+  --border: #21262d;
+  --border2: #30363d;
+  --text: #e6edf3;
+  --muted: #7d8590;
+  --accent: #2f81f7;
+  --accent2: #3fb950;
+  --accent3: #f78166;
+  --accent4: #d2a8ff;
+  --yellow: #e3b341;
+  --cyan: #39d0d8;
+  --red: #f85149;
+  --green: #3fb950;
+  --glow: rgba(47,129,247,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);z-index:100}
+
+/* LAYOUT */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.main{flex:1;overflow-y:auto;background:var(--bg)}
+
+/* SIDEBAR */
+.logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo-text{font-size:20px;font-weight:800;letter-spacing:-0.5px}
+.logo-text span{color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.nav{padding:12px 8px;flex:1}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 8px 4px}
+.ni{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;transition:all .15s;margin-bottom:2px;position:relative}
+.ni:hover{background:var(--bg3);color:var(--text)}
+.ni.active{background:rgba(47,129,247,0.12);color:var(--accent);border:1px solid rgba(47,129,247,0.2)}
+.ni.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--accent);border-radius:0 2px 2px 0}
+.ni .ico{width:18px;text-align:center;font-size:14px}
+.sidebar-bottom{padding:12px 8px;border-top:1px solid var(--border)}
+.user-badge{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:8px}
+.user-avatar{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--accent4));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:12px;font-weight:700;color:var(--text)}
+.user-role{font-size:10px;color:var(--muted)}
+
+/* PAGES */
+.page{display:none;padding:24px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE HEADER */
+.ph{margin-bottom:24px}
+.ph-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.pt{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+.ps{font-size:13px;color:var(--muted)}
+.ph-actions{display:flex;gap:8px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;font-family:'Syne',sans-serif}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#388bfd;box-shadow:0 0 12px rgba(47,129,247,0.4)}
+.btn-secondary{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+.btn-secondary:hover{background:var(--bg4);border-color:var(--muted)}
+.btn-danger{background:rgba(248,81,73,0.1);color:var(--red);border-color:rgba(248,81,73,0.3)}
+.btn-danger:hover{background:rgba(248,81,73,0.2)}
+.btn-success{background:rgba(63,185,80,0.1);color:var(--green);border-color:rgba(63,185,80,0.3)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:6px 8px;font-size:13px}
+
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.stat-card:hover{border-color:var(--border2)}
+.stat-card::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:0 12px 0 60px;opacity:0.06}
+.stat-card.blue::after{background:var(--accent)}
+.stat-card.green::after{background:var(--green)}
+.stat-card.red::after{background:var(--red)}
+.stat-card.yellow::after{background:var(--yellow)}
+.stat-card.purple::after{background:var(--accent4)}
+.stat-card.cyan::after{background:var(--cyan)}
+.stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.stat-value{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.stat-card.blue .stat-value{color:var(--accent)}
+.stat-card.green .stat-value{color:var(--green)}
+.stat-card.red .stat-value{color:var(--red)}
+.stat-card.yellow .stat-value{color:var(--yellow)}
+.stat-card.purple .stat-value{color:var(--accent4)}
+.stat-card.cyan .stat-value{color:var(--cyan)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* TABLE */
+.table-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.table-title{font-size:14px;font-weight:700}
+.table-actions{display:flex;gap:8px;align-items:center}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(33,38,45,0.5);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge-green{background:rgba(63,185,80,0.12);color:var(--green);border:1px solid rgba(63,185,80,0.2)}
+.badge-red{background:rgba(248,81,73,0.12);color:var(--red);border:1px solid rgba(248,81,73,0.2)}
+.badge-yellow{background:rgba(227,179,65,0.12);color:var(--yellow);border:1px solid rgba(227,179,65,0.2)}
+.badge-blue{background:rgba(47,129,247,0.12);color:var(--accent);border:1px solid rgba(47,129,247,0.2)}
+.badge-purple{background:rgba(210,168,255,0.12);color:var(--accent4);border:1px solid rgba(210,168,255,0.2)}
+
+/* PROGRESS */
+.progress{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:4px}
+.progress-bar{height:100%;border-radius:2px;transition:width .5s ease}
+.progress-bar.green{background:var(--green)}
+.progress-bar.yellow{background:var(--yellow)}
+.progress-bar.red{background:var(--red)}
+
+/* NODE CARD */
+.nodes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
+.node-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;transition:border-color .2s}
+.node-card:hover{border-color:var(--border2)}
+.node-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.node-name{font-weight:700;font-size:14px}
+.node-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+.node-info-item{background:var(--bg3);border-radius:6px;padding:8px}
+.node-info-label{color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:700;margin-bottom:2px}
+.node-info-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease}
+.modal.wide{max-width:640px}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:800}
+.modal-close{width:28px;height:28px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s}
+.modal-close:hover{background:var(--bg4);color:var(--text)}
+.modal-body{padding:20px}
+.modal-footer{padding:0 20px 20px;display:flex;gap:8px;justify-content:flex-end}
+
+/* FORM */
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Syne',sans-serif;outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--muted)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Syne',sans-serif;outline:none}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.checkbox-item{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.checkbox-item:hover{border-color:var(--border2)}
+.checkbox-item input{accent-color:var(--accent)}
+
+/* KEYS MODAL */
+.keys-grid{display:grid;gap:8px}
+.key-item{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:all .15s;position:relative}
+.key-item:hover{border-color:var(--accent);background:rgba(47,129,247,0.05)}
+.key-item:active{transform:scale(0.99)}
+.key-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.key-value{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);word-break:break-all;line-height:1.5}
+.key-copied{position:absolute;top:8px;right:8px;font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity .2s}
+.key-item.copied .key-copied{opacity:1}
+
+/* TRAFFIC */
+.traffic-node-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px}
+.traffic-node-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px}
+.tncl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:8px}
+.tncv{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--cyan)}
+.tncs{display:flex;gap:12px;margin-top:8px;font-size:11px;font-family:'JetBrains Mono',monospace}
+.tncs span{color:var(--muted)}
+.tncs .up{color:var(--green)}
+.tncs .dn{color:var(--accent)}
+
+/* SEARCH */
+.search-box{position:relative}
+.search-box input{padding-left:32px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:'Syne',sans-serif;outline:none;width:200px;padding-top:7px;padding-bottom:7px;padding-right:12px;transition:all .2s}
+.search-box input:focus{border-color:var(--accent);width:240px}
+.search-box::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:300px}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;color:var(--muted);text-align:center}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:0.5}
+.empty-text{font-size:14px;font-weight:600}
+
+/* DASHBOARD SPECIFIC */
+.dash-online{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:700}
+.dash-online::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(63,185,80,0.4)}50%{opacity:0.7;box-shadow:0 0 0 4px rgba(63,185,80,0)}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* LOGIN */
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:360px}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-text{font-size:28px;font-weight:800}
+.login-logo-text span{color:var(--accent)}
+.login-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.login-error{background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none}
+
+/* HOSTS */
+.host-tag{display:inline-flex;align-items:center;padding:3px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent4)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{width:60px;min-width:60px}
+  .ni span:not(.ico){display:none}
+  .logo-text,.logo-sub,.nav-section,.user-info{display:none}
+  .form-row{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-text">VPN<span>Panel</span></div>
+      <div class="login-sub">Панель управления</div>
+    </div>
+    <div id="login-error" class="login-error">Неверный логин или пароль</div>
+    <div class="form-group">
+      <label class="form-label">Логин</label>
+      <input id="l-user" class="form-input" placeholder="admin" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Пароль</label>
+      <input id="l-pass" class="form-input" placeholder="••••••••" type="password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" id="btn-login">Войти</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app" style="display:none">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-text">VPN<span>Panel</span></div>
+      <div class="logo-sub">v2.0 · remna-style</div>
+    </div>
+    <div class="nav">
+      <div class="nav-section">Основное</div>
+      <div class="ni active" id="nav-dash"><span class="ico">📊</span><span>Дашборд</span></div>
+      <div class="ni" id="nav-users"><span class="ico">👥</span><span>Пользователи</span></div>
+      <div class="nav-section">Инфраструктура</div>
+      <div class="ni" id="nav-inbounds"><span class="ico">⚡</span><span>Inbounds</span></div>
+      <div class="ni" id="nav-nodes"><span class="ico">🖥</span><span>Ноды</span></div>
+      <div class="ni" id="nav-bridges"><span class="ico">🌉</span><span>Мосты</span></div>
+      <div class="ni" id="nav-hosts"><span class="ico">🌐</span><span>Hosts</span></div>
+      <div class="nav-section">Система</div>
+      <div class="ni" id="nav-traffic"><span class="ico">📈</span><span>Трафик</span></div>
+      <div class="ni" id="nav-admins"><span class="ico">👮</span><span>Админы</span></div>
+      <div class="ni" id="nav-bots"><span class="ico">🤖</span><span>Боты</span></div>
+      <div class="ni" id="nav-audit" onclick="loadAudit()"><span class="ico">📋</span><span>Лог действий</span></div>
+      <div class="ni" id="nav-settings"><span class="ico">⚙️</span><span>Настройки</span></div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-badge">
+        <div class="user-avatar" id="sb-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="sb-name">Admin</div>
+          <div class="user-role" id="sb-role">Администратор</div>
+        </div>
+      </div>
+      <div class="ni" id="nav-logout" style="color:var(--red)"><span class="ico">🚪</span><span>Выйти</span></div>
+    </div>
+  </div>
+
+  <div class="main" id="main-content">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dash">
+      <div class="ph">
+        <div class="ph-top">
+          <div>
+            <div class="pt">Дашборд</div>
+            <div class="ps">Общая статистика системы</div>
+          </div>
+          <div class="dash-online" id="dash-online">Онлайн</div>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Всего пользователей</div><div class="stat-value" id="d-total">0</div><div class="stat-sub">зарегистрировано</div></div>
+        <div class="stat-card green"><div class="stat-label">Активных</div><div class="stat-value" id="d-active">0</div><div class="stat-sub">сейчас работают</div></div>
+        <div class="stat-card red"><div class="stat-label">Истекло</div><div class="stat-value" id="d-expired">0</div><div class="stat-sub">требуют продления</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Превышен лимит</div><div class="stat-value" id="d-overlimit">0</div><div class="stat-sub">исчерпан трафик</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Общий трафик</div><div class="stat-value" id="d-traffic">0</div><div class="stat-sub" id="d-traffic-sub">MB использовано</div></div>
+        <div class="stat-card purple"><div class="stat-label">Нод онлайн</div><div class="stat-value" id="d-nodes">0</div><div class="stat-sub">серверов активно</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Соединений</div><div class="stat-value" id="d-connections">—</div><div class="stat-sub">сейчас онлайн</div></div>
+      </div>
+
+
+
+      <!-- Bandwidth как remnawave -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📊 Bandwidth</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Today</div>
+              <div style="font-size:18px;font-weight:700" id="bw-today">—</div>
+              <div style="font-size:11px;margin-top:6px" id="bw-today-vs">vs yesterday</div>
+            </div>
+            <div style="width:48px;height:48px;background:rgba(88,166,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📅</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Last 7 days</div>
+              <div style="font-size:18px;font-weight:700" id="bw-7d">—</div>
+              <div style="font-size:11px;margin-top:6px" id="bw-7d-vs">vs last week</div>
+            </div>
+            <div style="width:48px;height:48px;background:rgba(63,185,80,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📈</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Last 30 days</div>
+              <div style="font-size:18px;font-weight:700" id="bw-30d">—</div>
+              <div style="font-size:11px;margin-top:6px" id="bw-30d-vs">vs last month</div>
+            </div>
+            <div style="width:48px;height:48px;background:rgba(240,165,0,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">🗓️</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Calendar month</div>
+              <div style="font-size:18px;font-weight:700" id="bw-month">—</div>
+            </div>
+            <div style="width:48px;height:48px;background:rgba(163,113,247,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📆</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Current year</div>
+              <div style="font-size:18px;font-weight:700" id="bw-year">—</div>
+            </div>
+            <div style="width:48px;height:48px;background:rgba(88,166,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">🗃️</div>
+          </div>
+        </div>
+      </div>
+      <!-- Обзор сервера -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px">🖥️ Обзор сервера</div>
+          <div style="font-size:12px;color:var(--muted)" id="sys-uptime">—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:center">
+          <!-- CPU круг -->
+          <div style="text-align:center">
+            <div style="position:relative;width:80px;height:80px;margin:0 auto">
+              <svg width="80" height="80" style="transform:rotate(-90deg)">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="6"/>
+                <circle id="cpu-circle" cx="40" cy="40" r="32" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="201" stroke-dashoffset="201" style="transition:stroke-dashoffset 0.5s"/>
+              </svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:700" id="sys-cpu">0%</div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">CPU</div>
+          </div>
+          <!-- RAM круг -->
+          <div style="text-align:center">
+            <div style="position:relative;width:80px;height:80px;margin:0 auto">
+              <svg width="80" height="80" style="transform:rotate(-90deg)">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="6"/>
+                <circle id="ram-circle" cx="40" cy="40" r="32" fill="none" stroke="var(--cyan)" stroke-width="6" stroke-dasharray="201" stroke-dashoffset="201" style="transition:stroke-dashoffset 0.5s"/>
+              </svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:700" id="sys-ram">0%</div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px" id="sys-ram-detail">RAM</div>
+          </div>
+          <!-- Диск круг -->
+          <div style="text-align:center">
+            <div style="position:relative;width:80px;height:80px;margin:0 auto">
+              <svg width="80" height="80" style="transform:rotate(-90deg)">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="6"/>
+                <circle id="disk-circle" cx="40" cy="40" r="32" fill="none" stroke="#f0a500" stroke-width="6" stroke-dasharray="201" stroke-dashoffset="201" style="transition:stroke-dashoffset 0.5s"/>
+              </svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:700" id="sys-disk">0%</div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px" id="sys-disk-detail">Диск</div>
+          </div>
+          <!-- Download -->
+          <div style="text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#3fb950" id="sys-recv">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">↓ Download</div>
+            <div style="font-size:22px;font-weight:800;color:var(--accent);margin-top:8px" id="sys-sent">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">↑ Upload</div>
+          </div>
+          <!-- Аптайм -->
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:800;color:var(--text)" id="sys-uptime2">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Аптайм</div>
+          </div>
+        </div>
+      </div>
+      <!-- Node status cards -->
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">📡 Состояние серверов</div>
+          <button class="btn btn-secondary btn-sm" onclick="loadDash()">🔄 Обновить</button>
+        </div>
+        <div id="dash-nodes" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+      </div>
+
+      <!-- Traffic Chart -->
+            <!-- Статистика индикаторы -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📊 Статистика</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">VLESS трафик</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent)" id="stat-vless">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">за 7 дней</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(88,166,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">⚡</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Hysteria2 трафик</div>
+              <div style="font-size:18px;font-weight:700;color:var(--cyan)" id="stat-hy2">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">за 7 дней</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(47,222,177,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🚀</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Main Server</div>
+              <div style="font-size:18px;font-weight:700;color:#3fb950" id="stat-main">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">за 7 дней</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(63,185,80,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🇸🇪</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Russia-75</div>
+              <div style="font-size:18px;font-weight:700;color:#f0a500" id="stat-ru75">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">за 7 дней</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(240,165,0,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🇷🇺</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Новых юзеров</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent)" id="stat-new-users">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">за 7 дней</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(88,166,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Активных сегодня</div>
+              <div style="font-size:18px;font-weight:700;color:#3fb950" id="stat-active-today">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">уникальных</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(63,185,80,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">✅</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">↓ Download</div>
+              <div style="font-size:18px;font-weight:700;color:var(--cyan)" id="stat-dl">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">всего</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(47,222,177,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">⬇️</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px">↑ Upload</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent)" id="stat-ul">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">всего</div>
+            </div>
+            <div style="width:40px;height:40px;background:rgba(88,166,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">⬆️</div>
+          </div>
+        </div>
+      </div>
+<div class="table-card">
+        <div class="table-header">
+          <div class="table-title">👥 Последние пользователи</div>
+        </div>
+        <table>
+          <thead><tr><th>Пользователь</th><th>Статус</th><th>Трафик</th><th>Истекает</th></tr></thead>
+          <tbody id="dash-users-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="page-users">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Пользователи</div><div class="ps">Управление VPN-аккаунтами</div></div>
+          <div class="ph-actions">
+            <div class="search-box"><input type="text" id="user-search" placeholder="Поиск..."></div>
+            <button class="btn btn-primary" id="btn-add-user">+ Добавить</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Пользователь</th><th>Статус</th><th>Трафик</th><th>Истекает</th><th>Действия</th></tr></thead>
+          <tbody id="users-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NODES -->
+    <div class="page" id="page-nodes">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Ноды</div><div class="ps">VPN серверы</div></div>
+          <button class="btn btn-primary" id="btn-add-node">+ Добавить</button>
+        </div>
+      </div>
+      <div class="nodes-grid" id="nodes-grid"></div>
+    </div>
+
+    <!-- BRIDGES -->
+    <div class="page" id="page-bridges">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Мосты</div><div class="ps">Туннелирование трафика</div></div>
+          <button class="btn btn-primary" id="btn-add-bridge">+ Создать мост</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Нода</th><th>RU IP</th><th>Foreign IP</th><th>Статус</th><th>Создан</th><th></th></tr></thead>
+          <tbody id="bridges-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HOSTS -->
+    <div class="page" id="page-hosts">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Hosts</div><div class="ps">Глобальные настройки хостов для всех пользователей</div></div>
+          <div class="ph-actions">
+            <button class="btn btn-success btn-sm" id="btn-regen-all">🔄 Перегенерировать ключи</button>
+            <button class="btn btn-primary" id="btn-add-host">+ Добавить</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:rgba(227,179,65,0.08);border:1px solid rgba(227,179,65,0.3);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--yellow);display:flex;align-items:center;gap:8px">
+        ⚠️ Изменение хоста автоматически обновит ключи <b>всех пользователей</b>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Inbound</th><th>Название</th><th>Адрес</th><th>Порт</th><th>SNI</th><th>Статус</th><th></th></tr></thead>
+          <tbody id="hosts-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TRAFFIC -->
+    <div class="page" id="page-traffic">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Трафик</div><div class="ps">Мониторинг использования</div></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadTraffic()">🔄 Обновить</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card cyan"><div class="stat-label">Общий трафик</div><div class="stat-value" id="tr-total">—</div></div>
+        <div class="stat-card red"><div class="stat-label">Истекло</div><div class="stat-value" id="tr-expired">—</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Превышен лимит</div><div class="stat-value" id="tr-overlimit">—</div></div>
+      </div>
+      <div class="traffic-node-grid" id="node-traffic-grid"></div>
+      <div class="table-card">
+        <div class="table-header"><div class="table-title">👥 По пользователям</div></div>
+        <table>
+          <thead><tr><th>Пользователь</th><th>Использовано</th><th>Лимит</th><th>Прогресс</th><th>Статус</th><th>Истекает</th></tr></thead>
+          <tbody id="traffic-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADMINS -->
+    <div class="page" id="page-admins">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Администраторы</div><div class="ps">Управление доступом</div></div>
+          <button class="btn btn-primary" id="btn-add-admin">+ Добавить</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Логин</th><th>Права</th><th>Создан</th><th></th></tr></thead>
+          <tbody id="admins-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BOTS -->
+    <div class="page" id="page-bots">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Боты</div><div class="ps">API токены для Telegram ботов</div></div>
+          <button class="btn btn-primary" id="btn-add-bot">+ Создать токен</button>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;font-size:12px;font-family:'JetBrains Mono',monospace">
+        <div style="color:var(--muted);margin-bottom:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700">Использование API</div>
+        <div style="color:var(--accent4)">POST /bot/users/create</div>
+        <div style="color:var(--muted);margin:4px 0">Headers: X-Bot-Token: &lt;token&gt;</div>
+        <div style="color:var(--muted)">Body: {"username":"...", "expire_days":30, "data_limit_gb":10}</div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Название</th><th>Создан</th><th></th></tr></thead>
+          <tbody id="bots-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="page" id="page-audit"></div>
+
+
+    <!-- INBOUNDS -->
+    <div class="page" id="page-inbounds">
+      <div class="page-header">
+        <div class="page-title">⚡ Inbounds</div>
+        <button class="btn btn-primary" onclick="openModal('modal-inbound-add')">➕ Добавить</button>
+      </div>
+      <div id="inbounds-grid" style="display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(380px,1fr))"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="pt">Настройки</div><div class="ps">Конфигурация панели</div></div>
+          <div class="settings-section">
+        <div class="settings-title">🔄 Автопродление подписок</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Автопродление</label>
+            <select id="s-auto-extend" class="form-input">
+              <option value="0">Выключено</option>
+              <option value="1">Включено</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Дней продления</label>
+            <input id="s-auto-days" class="form-input" type="number" value="30">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">⚠️ Продлевает только пользователей с включённым auto_extend</div>
+      </div>
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
+        <div class="settings-title">🔗 Webhook уведомления</div>
+        <div class="form-group">
+          <label class="form-label">URL для уведомлений</label>
+          <input id="s-webhook-url" class="form-input" placeholder="https://yoursite.com/webhook">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Секретный ключ (для подписи)</label>
+          <input id="s-webhook-secret" class="form-input" placeholder="my-secret-key">
+        </div>
+        <div class="form-group">
+          <label class="form-label">События</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="wh-expired" checked> Истёк пользователь</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="wh-node" checked> Нода упала</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="wh-overlimit" checked> Превышен лимит</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="wh-created"> Создан пользователь</label>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-test-webhook">📤 Тест Webhook</button>
+      </div>
+      <div class="settings-divider"></div>
+
+      <button class="btn btn-primary" id="btn-save-settings">💾 Сохранить</button>
+        </div>
+      </div>
+
+      <!-- Telegram -->
+      <div class="table-card" style="margin-bottom:20px">
+        <div class="table-header"><div class="table-title">📱 Telegram уведомления</div></div>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label class="form-label">Bot Token</label><input id="s-tg-token" class="form-input" placeholder="1234567890:AABBcc..."></div>
+          <div class="form-group"><label class="form-label">Admin ID</label><input id="s-tg-admin" class="form-input" placeholder="123456789"></div>
+          <div class="form-group"><label class="form-label">Домен панели</label><input id="s-domain" class="form-input" placeholder="https://panel.example.com"></div>
+          <div class="form-group"><label class="form-label">Домен подписок</label><input id="s-sub-domain" class="form-input" placeholder="https://sub.example.com"></div>
+        </div>
+        <div style="padding:0 16px 16px;display:flex;gap:12px">
+          <label class="checkbox-item"><input type="checkbox" id="s-tg-nodes" checked> Уведомления о нодах</label>
+          <label class="checkbox-item"><input type="checkbox" id="s-tg-users" checked> Уведомления о пользователях</label>
+        </div>
+        <div style="padding:0 16px 16px">
+          <button class="btn btn-secondary btn-sm" id="btn-test-tg">📤 Тест уведомления</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PAGE (inside main) -->
+
+
+<!-- MODALS -->
+<!-- Add User -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Новый пользователь</div>
+      <div class="modal-close" onclick="closeModal('modal-add-user')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Имя пользователя</label><input id="u-username" class="form-input" placeholder="user123"></div>
+      <div class="form-group"><label class="form-label">Telegram ID</label><input id="u-tgid" class="form-input" placeholder="123456789" type="number"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Дней</label><input id="u-days" class="form-input" value="30" type="number"></div>
+        <div class="form-group"><label class="form-label">Лимит (GB, 0=∞)</label><input id="u-limit" class="form-input" value="0" type="number"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Заметка</label><input id="u-note" class="form-input" placeholder="Необязательно"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-user')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-user">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Keys Modal -->
+<div class="modal-overlay" id="modal-keys">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Ключи — <span id="keys-username"></span></div>
+      <div class="modal-close" onclick="closeModal('modal-keys')">×</div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-secondary btn-sm" onclick="copyAllKeys()">📋 Скопировать все</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <button class="btn btn-secondary btn-sm" onclick="copyAllKeys()">📋 Скопировать все</button>
+      </div>
+      <div class="keys-grid" id="keys-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-keys')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Node -->
+<div class="modal-overlay" id="modal-add-node">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🖥 Добавить ноду</div>
+      <div class="modal-close" onclick="closeModal('modal-add-node')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">ID ноды</label><input id="n-id" class="form-input" placeholder="node1"></div>
+      <div class="form-group"><label class="form-label">Название</label><input id="n-name" class="form-input" placeholder="Sweden-01"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">IP адрес</label><input id="n-ip" class="form-input" placeholder="1.2.3.4"></div>
+        <div class="form-group"><label class="form-label">Страна</label><input id="n-country" class="form-input" placeholder="SE"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">SSH порт</label><input id="n-ssh-port" class="form-input" value="22" type="number"></div>
+        <div class="form-group"><label class="form-label">SSH пользователь</label><input id="n-ssh-user" class="form-input" value="root"></div>
+      </div>
+      <div class="form-group"><label class="form-label">SSH пароль</label><input id="n-ssh-pass" class="form-input" type="password"></div>
+      <div class="checkbox-item" style="margin-top:4px"><input type="checkbox" id="n-auto" checked><label for="n-auto">Автоустановка sing-box</label></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-node')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-node">🚀 Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Bridge -->
+<div class="modal-overlay" id="modal-add-bridge">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🌉 Создать мост</div>
+      <div class="modal-close" onclick="closeModal('modal-add-bridge')">×</div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">🇷🇺 Russian сервер</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">RU IP</label><input id="b-ru-ip" class="form-input" placeholder="185.40.4.169"></div>
+        <div class="form-group"><label class="form-label">SSH порт</label><input id="b-ru-port" class="form-input" value="22"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">SSH User</label><input id="b-ru-user" class="form-input" value="root"></div>
+        <div class="form-group"><label class="form-label">SSH Pass</label><input id="b-ru-pass" class="form-input" type="password"></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin:16px 0 12px">🌍 Foreign сервер</div>
+      <div class="form-group"><label class="form-label">Foreign IP</label><input id="b-foreign-ip" class="form-input" placeholder="193.168.197.161"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-bridge')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-bridge">🌉 Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Host Edit Modal -->
+<div class="modal-overlay" id="modal-host-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Редактировать хост</div>
+      <div class="modal-close" onclick="closeModal('modal-host-edit')">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-host-id">
+      <div class="form-group"><label class="form-label">Название</label><input id="edit-host-remark" class="form-input" placeholder="Main VLESS"></div>
+      <div class="form-group"><label class="form-label">Адрес</label><input id="edit-host-address" class="form-input" placeholder="193.168.197.161"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Порт</label><input id="edit-host-port" class="form-input" type="number"></div>
+        <div class="form-group"><label class="form-label">SNI</label><input id="edit-host-sni" class="form-input"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-host-edit')">Отмена</button>
+      <button class="btn btn-primary" id="btn-save-host">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Host Add Modal -->
+<div class="modal-overlay" id="modal-host-add">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Добавить хост</div>
+      <div class="modal-close" onclick="closeModal('modal-host-add')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Inbound тег</label>
+        <select id="add-host-tag" class="form-select">
+          <option value="vless-main">vless-main</option>
+          <option value="hy2-main">hy2-main</option>
+          <option value="vless-bridge">vless-bridge</option>
+          <option value="hy2-bridge">hy2-bridge</option>
+          <option value="vless-ru75">vless-ru75</option>
+          <option value="hy2-ru75">hy2-ru75</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Название</label><input id="add-host-remark" class="form-input" placeholder="My Host"></div>
+      <div class="form-group"><label class="form-label">Адрес</label><input id="add-host-address" class="form-input" placeholder="1.2.3.4"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Порт</label><input id="add-host-port" class="form-input" type="number" value="443"></div>
+        <div class="form-group"><label class="form-label">SNI</label><input id="add-host-sni" class="form-input" placeholder="www.microsoft.com"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-host-add')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-host-add">➕ Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Admin -->
+<div class="modal-overlay" id="modal-add-admin">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👮 Добавить администратора</div>
+      <div class="modal-close" onclick="closeModal('modal-add-admin')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Логин</label><input id="a-username" class="form-input" placeholder="subadmin"></div>
+        <div class="form-group"><label class="form-label">Пароль</label><input id="a-password" class="form-input" type="password"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Права</label>
+        <div class="checkbox-group">
+          <label class="checkbox-item"><input type="checkbox" id="a-add" checked> Добавлять</label>
+          <label class="checkbox-item"><input type="checkbox" id="a-del" checked> Удалять</label>
+          <label class="checkbox-item"><input type="checkbox" id="a-toggle" checked> Вкл/Выкл</label>
+          <label class="checkbox-item"><input type="checkbox" id="a-keys" checked> Ключи</label>
+          <label class="checkbox-item"><input type="checkbox" id="a-nodes"> Ноды</label>
+          <label class="checkbox-item"><input type="checkbox" id="a-bridges"> Мосты</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-admin')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-admin">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Bot -->
+<div class="modal-overlay" id="modal-add-bot">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🤖 Новый бот</div>
+      <div class="modal-close" onclick="closeModal('modal-add-bot')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Название бота</label><input id="bot-name" class="form-input" placeholder="SalesBot"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-bot')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-bot">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bot Token Display -->
+<div class="modal-overlay" id="modal-bot-token">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔐 Токен создан</div>
+      <div class="modal-close" onclick="closeModal('modal-bot-token')">×</div>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--green)">
+        ⚠️ Сохраните токен — он показывается только один раз!
+      </div>
+      <div class="key-item" id="bot-token-display" onclick="copyText(document.getElementById('bot-token-val').textContent);toast('✅ Скопировано!')">
+        <div class="key-label">🤖 Bot Token</div>
+        <div class="key-value" id="bot-token-val"></div>
+        <div class="key-copied">✓ Скопировано</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-bot-token')">Закрыть</button>
+      <button class="btn btn-primary" onclick="copyText(document.getElementById('bot-token-val').textContent);toast('✅ Скопировано!')">📋 Копировать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Extend Modal -->
+<div class="modal-overlay" id="modal-extend">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⏱ Продление подписки</div>
+      <div class="modal-close" onclick="closeModal('modal-extend')">×</div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Пользователь: <b id="extend-username"></b></div>
+      <input type="hidden" id="extend-uid">
+      <div class="form-group"><label class="form-label">Дней добавить</label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          <button class="btn btn-secondary" onclick="document.getElementById('extend-days').value=7">+7</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('extend-days').value=14">+14</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('extend-days').value=30">+30</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('extend-days').value=90">+90</button>
+        </div>
+        <input id="extend-days" class="form-input" type="number" value="30" placeholder="Дней">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-extend')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-extend">✅ Продлить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Note Edit Modal -->
+<div class="modal-overlay" id="modal-note">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📝 Заметка</div>
+      <div class="modal-close" onclick="closeModal('modal-note')">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="note-uid">
+      <div class="form-group">
+        <label class="form-label">Заметка для <b id="note-username"></b></label>
+        <input id="note-text" class="form-input" placeholder="Введите заметку...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-note')">Отмена</button>
+      <button class="btn btn-primary" id="btn-save-note">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📤 Импорт пользователей CSV</div>
+      <div class="modal-close" onclick="closeModal('modal-import')">×</div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Формат CSV: username, data_limit_gb, note<br>
+        Пример: user1, 10, клиент
+      </div>
+      <input type="file" id="import-file" accept=".csv" class="form-input">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">Отмена</button>
+      <button class="btn btn-primary" onclick="importUsers()">📤 Импортировать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Templates Modal -->
+<div class="modal-overlay" id="modal-templates">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">📋 Шаблоны пользователей</div>
+      <div class="modal-close" onclick="closeModal('modal-templates')">×</div>
+    </div>
+    <div class="modal-body">
+      <div id="templates-list" style="display:grid;gap:8px;margin-bottom:16px"></div>
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">НОВЫЙ ШАБЛОН</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Название</label><input id="tpl-name" class="form-input" placeholder="Базовый"></div>
+          <div class="form-group"><label class="form-label">Дней</label><input id="tpl-days" class="form-input" type="number" value="30"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Лимит GB (0=∞)</label><input id="tpl-limit" class="form-input" type="number" value="0"></div>
+          <div class="form-group"><label class="form-label">Заметка</label><input id="tpl-note" class="form-input" placeholder="..."></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="createTemplate()">➕ Создать шаблон</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-templates')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Log Modal -->
+<div class="modal-overlay" id="modal-audit">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">📋 Лог действий</div>
+      <div class="modal-close" onclick="closeModal('modal-audit')">×</div>
+    </div>
+    <div class="modal-body">
+      <div id="audit-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-audit')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit Inbound Modal -->
+<div class="modal-overlay" id="modal-inbound-edit">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Редактировать Inbound</div>
+      <div class="modal-close" onclick="closeModal('modal-inbound-edit')">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-ib-tag">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tag</label>
+          <input id="edit-ib-name" class="form-input" placeholder="vless-in">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input id="edit-ib-port" class="form-input" type="number" placeholder="443">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Listen</label>
+          <input id="edit-ib-listen" class="form-input" value="::" placeholder="::">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Домен (SNI)</label>
+          <input id="edit-ib-sni" class="form-input" placeholder="www.microsoft.com">
+        </div>
+      </div>
+      <div id="edit-ib-reality-section">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">REALITY НАСТРОЙКИ</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Handshake Server</label>
+            <input id="edit-ib-hs-server" class="form-input" placeholder="www.microsoft.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Handshake Port</label>
+            <input id="edit-ib-hs-port" class="form-input" type="number" value="443">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Short ID</label>
+            <input id="edit-ib-shortid" class="form-input" placeholder="6128f6b42d261a39">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Private Key</label>
+            <input id="edit-ib-privkey" class="form-input" placeholder="...">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-inbound-edit')">Отмена</button>
+      <button class="btn btn-primary" id="btn-save-inbound">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Inbound Modal -->
+<div class="modal-overlay" id="modal-inbound-add">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">➕ Новый Inbound</div>
+      <div class="modal-close" onclick="closeModal('modal-inbound-add')">×</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select id="add-ib-type" class="form-input">
+            <option value="vless">VLESS</option>
+            <option value="hysteria2">Hysteria2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tag</label>
+          <input id="add-ib-tag" class="form-input" placeholder="vless-in-2">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input id="add-ib-port" class="form-input" type="number" placeholder="443">
+        </div>
+        <div class="form-group">
+          <label class="form-label">SNI домен</label>
+          <input id="add-ib-sni" class="form-input" placeholder="www.microsoft.com">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-inbound-add')">Отмена</button>
+      <button class="btn btn-primary" id="btn-create-inbound">🚀 Создать</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="modal-change-pass">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔐 Смена пароля — <span id="cp-username"></span></div>
+      <div class="modal-close" onclick="closeModal('modal-change-pass')">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cp-admin-id">
+      <div class="form-group">
+        <label class="form-label">Новый пароль</label>
+        <input id="cp-new-pass" class="form-input" type="password" placeholder="••••••••">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-change-pass')">Отмена</button>
+      <button class="btn btn-primary" id="btn-save-pass">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+var TOKEN = localStorage.getItem('vpn_token') || '';
+var ROLE = localStorage.getItem('vpn_role') || 'admin';
+var _users = [];
+
+function toast(msg, dur) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, dur||2500);
+}
+
+function copyText(txt) {
+  try {
+    navigator.clipboard.writeText(txt);
+  } catch(e) {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
+function fmtBytes(b) {
+  if(!b) return '0 MB';
+  if(b >= 1073741824) return (b/1073741824).toFixed(2)+' GB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+
+function fmtDate(ts) {
+  if(!ts) return '∞';
+  return new Date(ts*1000).toLocaleDateString('ru');
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(function(o){
+  o.addEventListener('click', function(e){
+    if(e.target === o) o.classList.remove('open');
+  });
+});
+
+function api(method, path, body) {
+  var opts = {
+    method: method,
+    headers: {'Authorization':'Bearer '+TOKEN, 'Content-Type':'application/json'}
+  };
+  if(body) opts.body = JSON.stringify(body);
+  return fetch('/api'+path, opts).then(function(r){
+    if(r.status === 401){ logout(); return null; }
+    return r.json();
+  }).catch(function(){ return null; });
+}
+
+function logout() {
+  localStorage.removeItem('vpn_token');
+  localStorage.removeItem('vpn_role');
+  localStorage.removeItem('vpn_username');
+  TOKEN = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+var pages = ['dash','users','nodes','bridges','hosts','traffic','admins','bots','settings','inbounds'];
+function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  var name = localStorage.getItem('vpn_username') || 'Admin';
+  document.getElementById('sb-name').textContent = name;
+  document.getElementById('sb-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('sb-role').textContent = ROLE==='admin'?'Администратор':'Субадмин';
+  navTo('dash');
+}
+
+if(TOKEN) initApp();
+
+document.getElementById('btn-login').onclick = function(){
+  var u = document.getElementById('l-user').value.trim();
+  var p = document.getElementById('l-pass').value.trim();
+  fetch('/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u,password:p})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d && d.token){
+      TOKEN = d.token;
+      ROLE = d.role||'admin';
+      localStorage.setItem('vpn_token', TOKEN);
+      localStorage.setItem('vpn_role', ROLE);
+      localStorage.setItem('vpn_username', u);
+      document.getElementById('login-error').style.display = 'none';
+      initApp();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  });
+};
+
+document.getElementById('l-pass').onkeydown = function(e){
+  if(e.key==='Enter') document.getElementById('btn-login').click();
+};
+document.getElementById('nav-logout').onclick = logout;
+
+
+function navTo(name) {
+  pages.forEach(function(p){
+    var pg = document.getElementById('page-'+p);
+    var ni = document.getElementById('nav-'+p);
+    if(pg) pg.classList.toggle('active', p===name);
+    if(ni) ni.classList.toggle('active', p===name);
+  });
+  var loaders = {
+    dash:loadDash, users:loadUsers, nodes:loadNodes,
+    bridges:loadBridges, hosts:loadHosts, traffic:loadTraffic,
+    admins:loadAdmins, bots:loadBots, settings:loadSettingsPage, inbounds:loadInbounds
+  };
+  if(loaders[name]) loaders[name]();
+}
+
+pages.forEach(function(p){
+  var ni = document.getElementById('nav-'+p);
+  if(ni) ni.onclick = function(){ navTo(p); };
+});
+
+// DASHBOARD
+function loadDash() {
+  api('GET','/stats').then(function(s){
+    if(!s) return;
+    document.getElementById('d-total').textContent = s.total_users||0;
+    document.getElementById('d-active').textContent = s.active_users||0;
+    document.getElementById('d-expired').textContent = s.expired_users||0;
+    document.getElementById('d-overlimit').textContent = s.overlimit_users||0;
+  });
+  api('GET','/traffic/stats').then(function(s){
+    if(!s) return;
+    var tb = fmtBytes(s.total_traffic_bytes||0).split(' ');
+    document.getElementById('d-traffic').textContent = tb[0];
+    document.getElementById('d-traffic-sub').textContent = (tb[1]||'MB')+' использовано';
+  });
+  api('GET','/nodes').then(function(nodes){
+    if(!nodes) return;
+    var online = nodes.filter(function(n){ return n.status==='online'; }).length;
+    document.getElementById('d-nodes').textContent = online+'/'+nodes.length;
+    var html = '';
+    nodes.forEach(function(n){
+      var on = n.status==='online' || n.id==='ru75' || (n.country||'').includes('Russia');
+      var ip = n.ip||n.host||'—';
+      html += '<div style="background:var(--bg3);border:1px solid '+(on?'rgba(63,185,80,0.3)':'var(--border)')+';border-radius:10px;padding:14px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      html += '<div style="font-weight:700">' + n.name + '</div>';
+      html += '<span class="badge '+(on?'badge-green':'badge-red')+'">'+(on?'Online':'Offline')+'</span></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">';
+      html += '<div style="color:var(--muted)">IP:</div><div class="mono">'+ip+'</div>';
+      html += '<div style="color:var(--muted)">Страна:</div><div>'+n.country+'</div>';
+      html += '</div></div>';
+    });
+    document.getElementById('dash-nodes').innerHTML = html||'<div class="empty"><div class="empty-icon">📡</div><div class="empty-text">Нет нод</div></div>';
+  });
+  api('GET','/users').then(function(users){
+    if(!users||!users.length) return;
+    var html = '';
+    users.slice(0,5).forEach(function(u){
+      html += '<tr>';
+      html += '<td><b>'+u.username+'</b></td>';
+      html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':'badge-yellow')+'">'+u.status+'</span></td>';
+      html += '<td class="mono">'+fmtBytes(u.data_used||0)+' / '+(u.data_limit?fmtBytes(u.data_limit):'∞')+'</td>';
+      html += '<td>'+fmtDate(u.expire_at)+'</td>';
+      html += '</tr>';
+    });
+    document.getElementById('dash-users-tb').innerHTML = html;
+  });
+  loadSysStats();
+  loadBandwidth();
+  loadDashStats();
+  loadChart('traffic', 7);
+}
+
+// USERS
+function loadUsers() {
+  api('GET','/users').then(function(users){
+    _users = users||[];
+    renderUsers(_users);
+  });
+}
+
+function renderUsers(users) {
+  var tb = document.getElementById('users-tb');
+  if(!users||!users.length){
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Нет пользователей</div></div></td></tr>';
+    return;
+  }
+  var html = '';
+  users.forEach(function(u,i){
+    var pct = u.data_limit>0 ? Math.min(100,Math.round((u.data_used||0)/u.data_limit*100)) : 0;
+    var bc = pct>90?'red':pct>70?'yellow':'green';
+    html += '<tr>';
+    html += '<td><div style="font-weight:700">'+u.username+'</div>'+(u.note?'<div style="font-size:11px;color:var(--muted)">'+u.note+'</div>':'')+'</td>';
+    html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':u.status==='overlimit'?'badge-yellow':'badge-purple')+'">'+u.status+'</span></td>';
+    html += '<td><div class="mono">'+fmtBytes(u.data_used||0)+' / '+(u.data_limit?fmtBytes(u.data_limit):'∞')+'</div>';
+    if(u.data_limit) html += '<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div>';
+    html += '</td>';
+    html += '<td class="mono">'+fmtDate(u.expire_at)+'</td>';
+    html += '<td><div style="display:flex;gap:4px">';
+    html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="keys">🔑</button>';
+    html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="stats">📊</button>';
+    html += '<button class="btn btn-success btn-sm" data-i="'+i+'" data-a="extend">+⏱</button>';
+    html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="toggle">'+(u.status==='active'?'⏸':'▶️')+'</button>';
+    html += '<button class="btn btn-danger btn-sm" data-i="'+i+'" data-a="del">🗑</button>';
+    html += '</div></td></tr>';
+  });
+  tb.innerHTML = html;
+  tb.querySelectorAll('[data-a]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var u = _users[parseInt(this.getAttribute('data-i'))];
+      var a = this.getAttribute('data-a');
+      if(a==='keys') showKeys(u);
+      else if(a==='extend'){
+        document.getElementById('extend-uid').value = u.id;
+        document.getElementById('extend-username').textContent = u.username;
+        openModal('modal-extend');
+      }
+      else if(a==='toggle') api('PUT','/users/'+u.id,{status:u.status==='active'?'disabled':'active'}).then(loadUsers);
+      else if(a==='del'){
+        if(confirm('Удалить '+u.username+'?'))
+          api('DELETE','/users/'+u.id).then(function(){ loadUsers(); loadDash(); });
+      }
+    });
+  });
+}
+
+document.getElementById('user-search').oninput = function(){
+  var q = this.value.toLowerCase();
+  renderUsers(_users.filter(function(u){ return u.username.toLowerCase().includes(q); }));
+};
+
+document.getElementById('btn-add-user').onclick = function(){ openModal('modal-add-user'); };
+document.getElementById('btn-submit-user').onclick = function(){
+  var btn = this; btn.disabled = true;
+  api('POST','/users',{
+    username: document.getElementById('u-username').value.trim(),
+    telegram_id: document.getElementById('u-tgid').value.trim()||null,
+    expire_days: parseInt(document.getElementById('u-days').value)||30,
+    data_limit_gb: parseFloat(document.getElementById('u-limit').value)||0,
+    note: document.getElementById('u-note').value.trim(),
+    node_ids: ['main']
+  }).then(function(){
+    closeModal('modal-add-user');
+    btn.disabled = false;
+    loadUsers(); loadDash();
+    toast('✅ Пользователь создан!');
+  });
+};
+
+// KEYS
+function showKeys(u) {
+  document.getElementById('keys-username').textContent = u.username;
+  var domain = localStorage.getItem('vpn_domain') || window.location.origin;
+  var subUrl = u.sub_token ? domain+'/sub/'+u.sub_token : '';
+  var keys = [
+    {label:'🌍 Главный — VLESS', color:'var(--accent)', val:u.subscription_url},
+    {label:'🌍 Главный — Hysteria2', color:'var(--accent)', val:u.hysteria2_url},
+    {label:'🌉 Мост — VLESS', color:'var(--cyan)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return Object.entries(k).filter(function(e){return e[0].includes('bridge')&&e[0].includes('vless')})[0]||[,''];} catch(e){return [,''];}}())[1]||u.vless_main_bridge},
+    {label:'🌉 Мост — HY2', color:'var(--cyan)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return Object.entries(k).filter(function(e){return e[0].includes('bridge')&&e[0].includes('hy2')})[0]||[,''];} catch(e){return [,''];}}())[1]||u.hy2_main_bridge},
+    {label:'🇫🇮 Finland — VLESS', color:'var(--green)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return k.vless_fin||'';} catch(e){return '';}}())||u.vless_ru75},
+    {label:'🇫🇮 Finland — HY2', color:'var(--green)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return k.hy2_fin||'';} catch(e){return '';}}())||u.hy2_ru75},
+  ];
+  var html = '';
+  if(subUrl){
+    html += '<div class="key-item" style="border-color:rgba(227,179,65,0.4)" onclick="cpKey(this)">';
+    html += '<div class="key-label" style="color:var(--yellow)">🔗 Ссылка подписки</div>';
+    html += '<div class="key-value">'+subUrl+'</div>';
+    html += '<div class="key-copied">✓ Скопировано</div></div>';
+  }
+  keys.forEach(function(k){
+    if(!k.val) return;
+    html += '<div class="key-item" onclick="cpKey(this)">';
+    html += '<div class="key-label" style="color:'+k.color+'">'+k.label+'</div>';
+    html += '<div class="key-value">'+k.val+'</div>';
+    html += '<div class="key-copied">✓ Скопировано</div></div>';
+  });
+  document.getElementById('keys-grid').innerHTML = html||'<div class="empty"><div class="empty-icon">🔑</div><div class="empty-text">Нет ключей</div></div>';
+  openModal('modal-keys');
+}
+
+function cpKey(el){
+  var v = el.querySelector('.key-value');
+  if(!v) return;
+  copyText(v.textContent.trim());
+  el.classList.add('copied');
+  setTimeout(function(){ el.classList.remove('copied'); }, 1500);
+  toast('✅ Скопировано!');
+}
+
+function copyAllKeys(){
+  var items = document.querySelectorAll('#keys-grid .key-value');
+  var vals = [];
+  items.forEach(function(v){ if(v.textContent.trim()) vals.push(v.textContent.trim()); });
+  if(vals.length){ copyText(vals.join('\n')); toast('✅ Все ключи скопированы!'); }
+}
+
+// EXTEND
+document.getElementById('btn-submit-extend').onclick = function(){
+  var uid = document.getElementById('extend-uid').value;
+  var days = parseInt(document.getElementById('extend-days').value)||30;
+  api('POST','/users/'+uid+'/extend',{days:days}).then(function(){
+    closeModal('modal-extend'); loadUsers(); toast('✅ Продлено на '+days+' дней!');
+  });
+};
+
+// NODES
+function loadNodes() {
+  api('GET','/nodes').then(function(nodes){
+    if(!nodes) return;
+    var html = '';
+    nodes.forEach(function(n){
+      var on = n.status==='online' || n.id==='ru75' || (n.country||'').includes('Russia');
+      var ip = n.ip||n.host||'—';
+      html += '<div class="node-card">';
+      html += '<div class="node-card-header"><div class="node-name">'+n.name+'</div>';
+      html += '<span class="badge '+(on?'badge-green':'badge-red')+'">'+(on?'● Online':'● Offline')+'</span></div>';
+      html += '<div class="node-info">';
+      html += '<div class="node-info-item"><div class="node-info-label">IP</div><div class="node-info-val">'+ip+'</div></div>';
+      html += '<div class="node-info-item"><div class="node-info-label">Страна</div><div class="node-info-val">'+n.country+'</div></div>';
+      html += '<div class="node-info-item"><div class="node-info-label">ID</div><div class="node-info-val">'+n.id+'</div></div>';
+      html += '<div class="node-info-item"><div class="node-info-label">Статус</div><div class="node-info-val" style="color:'+(on?'var(--green)':'var(--red)')+'">'+n.status+'</div></div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:6px;margin-top:12px">';
+      html += '<button class="btn btn-secondary btn-sm" style="flex:1" onclick="pingNode(\''+n.id+'\')">📡 Ping</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="delNode(\''+n.id+'\')">🗑</button>';
+      html += '</div></div>';
+    });
+    document.getElementById('nodes-grid').innerHTML = html||'<div class="empty"><div class="empty-icon">🖥</div><div class="empty-text">Нет нод</div></div>';
+  });
+}
+
+function pingNode(id){ toast('📡 Пингуем...'); api('GET','/nodes/'+id+'/ping').then(function(r){ if(r) toast(r.status==='online'?'✅ Онлайн!':'❌ Оффлайн'); loadNodes(); }); }
+function delNode(id){ if(!confirm('Удалить ноду?')) return; api('DELETE','/nodes/'+id).then(function(){ loadNodes(); toast('✅ Удалено'); }); }
+
+document.getElementById('btn-add-node').onclick = function(){ openModal('modal-add-node'); };
+document.getElementById('btn-submit-node').onclick = function(){
+  var btn=this; btn.disabled=true; btn.textContent='⏳...';
+  api('POST','/nodes',{
+    id:document.getElementById('n-id').value.trim(),
+    name:document.getElementById('n-name').value.trim(),
+    host:document.getElementById('n-ip').value.trim(),
+    country:document.getElementById('n-country').value.trim()||'--',
+    ssh_port:parseInt(document.getElementById('n-ssh-port').value)||22,
+    ssh_username:document.getElementById('n-ssh-user').value.trim(),
+    ssh_password:document.getElementById('n-ssh-pass').value,
+    auto_install:document.getElementById('n-auto').checked
+  }).then(function(){ closeModal('modal-add-node'); btn.disabled=false; btn.textContent='🚀 Добавить'; loadNodes(); toast('✅ Нода добавлена!'); });
+};
+
+// BRIDGES
+function loadBridges() {
+  api('GET','/bridges').then(function(bridges){
+    var tb = document.getElementById('bridges-tb');
+    if(!bridges||!bridges.length){
+      tb.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">🌉</div><div class="empty-text">Нет мостов</div></div></td></tr>';
+      return;
+    }
+    var html = '';
+    bridges.forEach(function(b){
+      html += '<tr><td class="mono">'+b.node_id+'</td><td class="mono">'+b.ru_ip+'</td><td class="mono">'+b.foreign_ip+'</td>';
+      html += '<td><span class="badge '+(b.active?'badge-green':'badge-red')+'">'+(b.active?'Активен':'Откл')+'</span></td>';
+      html += '<td style="font-size:12px;color:var(--muted)">'+new Date(b.created_at*1000).toLocaleDateString('ru')+'</td>';
+      html += '<td><button class="btn btn-danger btn-sm" onclick="delBridge('+b.id+')">🗑</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  });
+}
+
+function delBridge(id){ if(!confirm('Удалить мост?')) return; api('DELETE','/bridges/'+id).then(function(){ loadBridges(); toast('✅ Удалено'); }); }
+
+document.getElementById('btn-add-bridge').onclick = function(){ openModal('modal-add-bridge'); };
+document.getElementById('btn-submit-bridge').onclick = function(){
+  var btn=this; btn.disabled=true;
+  api('POST','/bridges',{
+    node_id:'main',
+    ru_ip:document.getElementById('b-ru-ip').value.trim(),
+    foreign_ip:document.getElementById('b-foreign-ip').value.trim(),
+    ssh_port:parseInt(document.getElementById('b-ru-port').value)||22,
+    ssh_user:document.getElementById('b-ru-user').value.trim(),
+    ssh_password:document.getElementById('b-ru-pass').value
+  }).then(function(){ closeModal('modal-add-bridge'); btn.disabled=false; loadBridges(); toast('✅ Мост создан!'); });
+};
+
+// HOSTS
+function loadHosts() {
+  api('GET','/hosts').then(function(hosts){
+    var tb = document.getElementById('hosts-tb');
+    if(!hosts||!hosts.length){
+      tb.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">🌐</div><div class="empty-text">Нет хостов</div></div></td></tr>';
+      return;
+    }
+    var html = '';
+    hosts.forEach(function(h){
+      html += '<tr>';
+      html += '<td><span class="host-tag">'+h.inbound_tag+'</span></td>';
+      html += '<td><b>'+h.remark+'</b></td>';
+      html += '<td class="mono">'+h.address+'</td>';
+      html += '<td class="mono">'+h.port+'</td>';
+      html += '<td class="mono">'+(h.sni||'—')+'</td>';
+      html += '<td><span class="badge '+(h.active?'badge-green':'badge-red')+'">'+(h.active?'Активен':'Откл')+'</span></td>';
+      html += '<td><div style="display:flex;gap:6px">';
+      html += '<button class="btn btn-secondary btn-sm" onclick="editHost('+h.id+',this)">✏️</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="delHost('+h.id+')">🗑</button>';
+      html += '</div></td></tr>';
+    });
+    tb.innerHTML = html;
+    // Сохраняем данные хостов для редактирования
+    document.getElementById('hosts-tb')._hosts = hosts;
+  });
+}
+
+function editHost(id, btn){
+  var hosts = document.getElementById('hosts-tb')._hosts || [];
+  var h = hosts.find(function(x){ return x.id===id; });
+  if(!h) return;
+  document.getElementById('edit-host-id').value = h.id;
+  document.getElementById('edit-host-remark').value = h.remark;
+  document.getElementById('edit-host-address').value = h.address;
+  document.getElementById('edit-host-port').value = h.port;
+  document.getElementById('edit-host-sni').value = h.sni||'';
+  openModal('modal-host-edit');
+}
+
+function delHost(id){ if(!confirm('Удалить хост?')) return; api('DELETE','/hosts/'+id).then(function(){ loadHosts(); toast('✅ Удалено'); }); }
+
+document.getElementById('btn-save-host').onclick = function(){
+  var id = document.getElementById('edit-host-id').value;
+  api('PUT','/hosts/'+id,{
+    remark:document.getElementById('edit-host-remark').value.trim(),
+    address:document.getElementById('edit-host-address').value.trim(),
+    port:parseInt(document.getElementById('edit-host-port').value),
+    sni:document.getElementById('edit-host-sni').value.trim()
+  }).then(function(){ closeModal('modal-host-edit'); loadHosts(); toast('✅ Хост обновлён!'); });
+};
+
+document.getElementById('btn-add-host').onclick = function(){ openModal('modal-host-add'); };
+document.getElementById('btn-submit-host-add').onclick = function(){
+  api('POST','/hosts',{
+    inbound_tag:document.getElementById('add-host-tag').value,
+    remark:document.getElementById('add-host-remark').value.trim(),
+    address:document.getElementById('add-host-address').value.trim(),
+    port:parseInt(document.getElementById('add-host-port').value)||443,
+    sni:document.getElementById('add-host-sni').value.trim()
+  }).then(function(){ closeModal('modal-host-add'); loadHosts(); toast('✅ Хост добавлен!'); });
+};
+
+document.getElementById('btn-regen-all').onclick = function(){
+  var btn=this; btn.textContent='⏳...'; btn.disabled=true;
+  api('POST','/hosts/regen').then(function(){
+    btn.textContent='🔄 Перегенерировать ключи'; btn.disabled=false; toast('✅ Ключи обновлены!');
+  });
+};
+
+// TRAFFIC
+function loadTraffic() {
+  api('GET','/traffic/stats').then(function(data){
+    if(!data) return;
+    document.getElementById('tr-total').textContent = fmtBytes(data.total_traffic_bytes||0);
+    document.getElementById('tr-expired').textContent = data.expired_users||0;
+    document.getElementById('tr-overlimit').textContent = data.overlimit_users||0;
+    var ng = document.getElementById('node-traffic-grid');
+    if(data.nodes&&data.nodes.length){
+      var nh = '';
+      data.nodes.forEach(function(n){
+        var total = (n.bytes_up||0)+(n.bytes_down||0);
+        nh += '<div class="traffic-node-card">';
+        nh += '<div class="tncl">📡 '+n.name+'</div>';
+        nh += '<div class="tncv">'+fmtBytes(total)+'</div>';
+        nh += '<div class="tncs"><span class="up">↑ '+fmtBytes(n.bytes_up||0)+'</span><span class="dn">↓ '+fmtBytes(n.bytes_down||0)+'</span></div>';
+        nh += '</div>';
+      });
+      ng.innerHTML = nh;
+    }
+    var tb = document.getElementById('traffic-tb');
+    if(data.users&&data.users.length){
+      var html = '';
+      data.users.forEach(function(u){
+        var pct = u.data_limit_gb>0 ? Math.min(100,Math.round(u.data_used_gb/u.data_limit_gb*100)) : 0;
+        var bc = pct>90?'red':pct>70?'yellow':'green';
+        html += '<tr>';
+        html += '<td><b>'+u.username+'</b></td>';
+        html += '<td class="mono">'+u.data_used_mb+' MB</td>';
+        html += '<td class="mono">'+(u.data_limit_gb?u.data_limit_gb+' GB':'∞')+'</td>';
+        html += '<td style="min-width:120px">'+(u.data_limit_gb?'<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div><div style="font-size:11px;color:var(--muted)">'+pct+'%</div>':'—')+'</td>';
+        html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':'badge-yellow')+'">'+u.status+'</span></td>';
+        html += '<td class="mono">'+fmtDate(u.expire_at)+'</td>';
+        html += '</tr>';
+      });
+      tb.innerHTML = html;
+    }
+  });
+}
+
+// ADMINS
+function loadAdmins() {
+  // Показываем главного admin
+  var container = document.getElementById('admins-tb') ? document.getElementById('admins-tb').closest('.table-card') : null;
+  if(container && !container._mainShown){
+    container._mainShown = true;
+    var mainHtml = '<div style="background:var(--bg3);border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">';
+    mainHtml += '<div><b>admin</b> <span class="badge badge-purple">Главный</span></div>';
+    mainHtml += '<button class="btn btn-secondary btn-sm" onclick="changeMainPass()">🔐 Сменить пароль</button>';
+    mainHtml += '</div>';
+    container.insertAdjacentHTML('afterbegin', mainHtml);
+  }
+  api('GET','/subadmins').then(function(admins){
+    var tb = document.getElementById('admins-tb');
+    if(!admins||!admins.length){
+      tb.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">👮</div><div class="empty-text">Нет субадминов</div></div></td></tr>';
+      return;
+    }
+    var html = '';
+    admins.forEach(function(a){
+      var perms = [];
+      if(a.can_add_users) perms.push('add');
+      if(a.can_delete_users) perms.push('del');
+      if(a.can_view_keys) perms.push('keys');
+      if(a.can_manage_nodes) perms.push('nodes');
+      html += '<tr><td><b>'+a.username+'</b></td>';
+      html += '<td>'+perms.map(function(p){ return '<span class="badge badge-blue">'+p+'</span>'; }).join(' ')+'</td>';
+      html += '<td style="font-size:12px;color:var(--muted)">'+new Date(a.created_at*1000).toLocaleDateString('ru')+'</td>';
+      html += '<td><button class="btn btn-danger btn-sm" onclick="delAdmin('+a.id+')">🗑</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  });
+}
+
+function delAdmin(id){ if(!confirm('Удалить?')) return; api('DELETE','/subadmins/'+id).then(function(){ loadAdmins(); toast('✅ Удалён'); }); }
+
+document.getElementById('btn-add-admin').onclick = function(){ openModal('modal-add-admin'); };
+document.getElementById('btn-submit-admin').onclick = function(){
+  api('POST','/subadmins',{
+    username:document.getElementById('a-username').value.trim(),
+    password:document.getElementById('a-password').value,
+    can_add_users:document.getElementById('a-add').checked?1:0,
+    can_delete_users:document.getElementById('a-del').checked?1:0,
+    can_toggle_users:document.getElementById('a-toggle').checked?1:0,
+    can_view_keys:document.getElementById('a-keys').checked?1:0,
+    can_manage_nodes:document.getElementById('a-nodes').checked?1:0,
+    can_manage_bridges:document.getElementById('a-bridges').checked?1:0
+  }).then(function(){ closeModal('modal-add-admin'); loadAdmins(); toast('✅ Создан!'); });
+};
+
+// BOTS
+function loadBots() {
+  api('GET','/bots').then(function(bots){
+    var tb = document.getElementById('bots-tb');
+    if(!bots||!bots.length){
+      tb.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">Нет ботов</div></div></td></tr>';
+      return;
+    }
+    var html = '';
+    bots.forEach(function(b){
+      html += '<tr><td><b>'+b.name+'</b></td>';
+      html += '<td style="font-size:12px;color:var(--muted)">'+new Date(b.created_at*1000).toLocaleDateString('ru')+'</td>';
+      html += '<td><button class="btn btn-danger btn-sm" onclick="delBot('+b.id+')">🗑</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  });
+}
+
+function delBot(id){ if(!confirm('Удалить?')) return; api('DELETE','/bots/'+id).then(function(){ loadBots(); toast('✅ Удалён'); }); }
+
+document.getElementById('btn-add-bot').onclick = function(){ openModal('modal-add-bot'); };
+document.getElementById('btn-submit-bot').onclick = function(){
+  api('POST','/bots',{name:document.getElementById('bot-name').value.trim()}).then(function(r){
+    closeModal('modal-add-bot');
+    if(r&&r.token){ document.getElementById('bot-token-val').textContent=r.token; openModal('modal-bot-token'); }
+    loadBots();
+  });
+};
+
+// SETTINGS
+function loadSettingsPage() {
+  api('GET','/settings').then(function(s){
+    if(!s) return;
+    document.getElementById('s-tg-token').value = s.tg_bot_token||'';
+    document.getElementById('s-tg-admin').value = s.tg_admin_id||'';
+    document.getElementById('s-domain').value = s.panel_domain||'';
+    document.getElementById('s-sub-domain').value = s.sub_domain||'';
+    document.getElementById('s-tg-nodes').checked = s.tg_notify_node!=='0';
+    document.getElementById('s-tg-users').checked = s.tg_notify_user!=='0';
+    if(s.panel_domain) localStorage.setItem('vpn_domain', s.panel_domain);
+  });
+  loadSysStats();
+}
+
+document.getElementById('btn-save-settings').onclick = function(){
+  var domain = document.getElementById('s-domain').value.trim();
+  api('PUT','/settings',{
+    tg_bot_token:document.getElementById('s-tg-token').value.trim(),
+    tg_admin_id:document.getElementById('s-tg-admin').value.trim(),
+    panel_domain:domain,
+    sub_domain:document.getElementById('s-sub-domain').value.trim(),
+    tg_notify_node:document.getElementById('s-tg-nodes').checked?'1':'0',
+    tg_notify_user:document.getElementById('s-tg-users').checked?'1':'0',
+  }).then(function(){
+    if(domain) localStorage.setItem('vpn_domain', domain);
+    toast('✅ Настройки сохранены!');
+  });
+};
+
+document.getElementById('btn-test-tg').onclick = function(){
+  var btn=this; btn.textContent='⏳...'; btn.disabled=true;
+  api('POST','/system/notify-test').then(function(r){
+    btn.disabled=false;
+    btn.textContent = r&&r.ok?'✅ Отправлено!':'❌ Ошибка';
+    setTimeout(function(){ btn.textContent='📤 Тест уведомления'; },3000);
+  });
+};
+
+
+
+
+function loadInbounds() {
+  api('GET','/inbounds').then(function(inbounds){
+    var g = document.getElementById('inbounds-grid');
+    if(!inbounds||!g) return;
+    g._data = inbounds;
+    var html = '';
+    inbounds.forEach(function(ib){
+      var color = ib.type==='vless' ? 'var(--accent)' : 'var(--cyan)';
+      var clients = (ib.raw.users||[]).length;
+      var tls = ib.raw.tls||{};
+      var reality = tls.reality||{};
+      var sni = tls.server_name||(reality.handshake&&reality.handshake.server)||'—';
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+      html += '<div><div style="font-weight:700;font-size:15px">'+ib.tag+'</div>';
+      html += '<div style="font-size:12px;color:var(--muted)">'+ib.type.toUpperCase()+'</div></div>';
+      html += '<span class="badge badge-green">Active</span></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+      html += '<div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--muted)">ПОРТ</div><div style="font-size:20px;font-weight:700;color:'+color+'">'+ib.port+'</div></div>';
+      html += '<div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--muted)">КЛИЕНТОВ</div><div style="font-size:20px;font-weight:700">'+clients+'</div></div>';
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:16px">';
+      html += '<div style="color:var(--muted)">SNI:</div><div class="mono">'+sni+'</div>';
+      if(reality.enabled) html += '<div style="color:var(--muted)">Reality:</div><div><span class="badge badge-purple">ON</span></div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:8px">';
+      html += '<button class="btn btn-secondary btn-sm" style="flex:1" data-tag="'+ib.tag+'" data-action="edit-inbound">✏️ Редактировать</button>';
+      html += '<button class="btn btn-danger btn-sm" data-tag="'+ib.tag+'" data-action="del-inbound">🗑</button>';
+      html += '</div></div>';
+    });
+    g.innerHTML = html || '<div class="empty"><div class="empty-icon">⚡</div><div class="empty-text">Нет inbounds</div></div>';
+    if(!g._delegated){
+      g._delegated = true;
+      g.addEventListener('click', function(e){
+        var btn = e.target.closest('[data-action]');
+        if(!btn) return;
+        var tag = btn.getAttribute('data-tag');
+        var action = btn.getAttribute('data-action');
+        var ib = (g._data||[]).find(function(x){return x.tag===tag;});
+        if(action==='del-inbound'){
+          if(!confirm('Удалить '+tag+'?')) return;
+          api('DELETE','/inbounds/'+tag).then(function(r){ if(r&&r.ok){toast('✅ Удалено!');setTimeout(loadInbounds,2000);} });
+        } else if(action==='edit-inbound' && ib){
+          var tls=ib.raw.tls||{}, reality=tls.reality||{};
+          document.getElementById('edit-ib-tag').value=tag;
+          document.getElementById('edit-ib-port').value=ib.port;
+          document.getElementById('edit-ib-listen').value=ib.listen||'::';
+          document.getElementById('edit-ib-sni').value=tls.server_name||'';
+          if(reality.handshake){document.getElementById('edit-ib-hs-server').value=reality.handshake.server||'';document.getElementById('edit-ib-hs-port').value=reality.handshake.server_port||443;}
+          if(reality.short_id) document.getElementById('edit-ib-shortid').value=(reality.short_id||[''])[0];
+          openModal('modal-inbound-edit');
+        }
+      });
+    }
+  });
+}
+
+function loadChart(type, days) {
+  if(typeof Chart === 'undefined'){ setTimeout(function(){ loadChart(type, days); }, 500); return; }
+  type = type || 'traffic';
+  days = days || 7;
+  // Подсветка кнопок
+  ['chart-7d','chart-30d','chart-90d','chart-users'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.opacity='0.5';
+  });
+  if(type==='users'){ var btn=document.getElementById('chart-users'); if(btn) btn.style.opacity='1'; }
+  else if(days===7){ var btn=document.getElementById('chart-7d'); if(btn) btn.style.opacity='1'; }
+  else if(days===30){ var btn=document.getElementById('chart-30d'); if(btn) btn.style.opacity='1'; }
+  else if(days===90){ var btn=document.getElementById('chart-90d'); if(btn) btn.style.opacity='1'; }
+
+  api('GET','/traffic/daily?days='+days).then(function(data){
+    if(!data) return;
+    var labels = data.map(function(d){ return d.label; });
+    var values, label, color;
+    if(type==='users'){ values=data.map(function(d){return d.active_users;}); label='Активных'; color='rgba(88,166,255,0.8)'; }
+    else { values=data.map(function(d){return d.traffic_gb;}); label='Трафик GB'; color='rgba(63,185,80,0.8)'; }
+    var canvas = document.getElementById('dash-chart');
+    if(!canvas) return;
+    if(window._chart){ window._chart.destroy(); window._chart=null; }
+    window._chart = new Chart(canvas.getContext('2d'), {
+      type:'bar',
+      data:{labels:labels, datasets:[{label:label, data:values, backgroundColor:color, borderRadius:6}]},
+      options:{responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#8b949e'}}},
+        scales:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,0.05)'}},
+                y:{ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,0.05)'},beginAtZero:true}}}
+    });
+  });
+}
+
+function filterUsers() {
+  var status = document.getElementById('filter-status');
+  var sort = document.getElementById('filter-sort');
+  var q = document.getElementById('user-search');
+  var sv=status?status.value:'', so=sort?sort.value:'', qv=q?q.value.toLowerCase():'';
+  var filtered = _users.filter(function(u){
+    if(qv && !u.username.toLowerCase().includes(qv)) return false;
+    if(sv && u.status!==sv) return false;
+    return true;
+  });
+  if(so==='traffic') filtered.sort(function(a,b){return (b.data_used||0)-(a.data_used||0);});
+  else if(so==='expire') filtered.sort(function(a,b){return (a.expire_at||0)-(b.expire_at||0);});
+  else if(so==='name') filtered.sort(function(a,b){return a.username.localeCompare(b.username);});
+  renderUsers(filtered);
+}
+
+
+window.changeMainPass = function(){
+  var pass = prompt('Введите новый пароль для admin:');
+  if(!pass||pass.length<4){ if(pass!==null) toast('❌ Минимум 4 символа!'); return; }
+  api('POST','/change-password',{old_password:'',new_password:pass,force:true}).then(function(r){
+    if(r&&r.ok) toast('✅ Пароль изменён!');
+    else toast('❌ Ошибка');
+  });
+};
+
+document.getElementById('btn-save-inbound').onclick = function(){
+  var tag = document.getElementById('edit-ib-tag').value;
+  api('PUT','/inbounds/'+tag+'/full', {
+    port: parseInt(document.getElementById('edit-ib-port').value),
+    listen: document.getElementById('edit-ib-listen').value,
+    sni: document.getElementById('edit-ib-sni').value,
+    hs_server: document.getElementById('edit-ib-hs-server').value,
+    hs_port: parseInt(document.getElementById('edit-ib-hs-port').value),
+    short_id: document.getElementById('edit-ib-shortid').value,
+  }).then(function(r){
+    if(r&&r.ok){closeModal('modal-inbound-edit');toast('✅ Сохранено!');setTimeout(loadInbounds,3000);}
+  });
+};
+
+document.getElementById('btn-create-inbound').onclick = function(){
+  var btn=this; btn.disabled=true;
+  api('POST','/inbounds/add', {
+    type: document.getElementById('add-ib-type').value,
+    tag: document.getElementById('add-ib-tag').value,
+    port: parseInt(document.getElementById('add-ib-port').value),
+    sni: document.getElementById('add-ib-sni').value,
+  }).then(function(r){
+    btn.disabled=false;
+    if(r&&r.ok){closeModal('modal-inbound-add');toast('✅ Создан!');setTimeout(loadInbounds,3000);}
+  });
+};
+
+// Делегирование для admins-tb
+var adminsTb = document.getElementById('admins-tb');
+if(adminsTb && !adminsTb._delegated){
+  adminsTb._delegated = true;
+  adminsTb.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-action="change-pass-admin"]');
+    if(!btn) return;
+    document.getElementById('cp-admin-id').value = btn.getAttribute('data-id');
+    document.getElementById('cp-username').textContent = btn.getAttribute('data-name');
+    document.getElementById('cp-new-pass').value = '';
+    openModal('modal-change-pass');
+  });
+}
+
+document.getElementById('btn-save-pass').onclick = function(){
+  var id = document.getElementById('cp-admin-id').value;
+  var pass = document.getElementById('cp-new-pass').value;
+  if(!pass||pass.length<4){ toast('❌ Минимум 4 символа!'); return; }
+  api('POST','/subadmins/'+id+'/change-password',{password:pass}).then(function(r){
+    if(r&&r.ok){ closeModal('modal-change-pass'); toast('✅ Пароль изменён!'); }
+  });
+};
+
+
+function exportUsers(){
+  fetch('/api/users/export',{headers:{'Authorization':'Bearer '+TOKEN}})
+    .then(function(r){return r.blob();})
+    .then(function(b){
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(b);
+      a.download='users.csv';
+      a.click();
+    });
+}
+
+function importUsers(){
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='.csv';
+  inp.onchange=function(){
+    var fd=new FormData();
+    fd.append('file',inp.files[0]);
+    fetch('/api/users/import',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd})
+      .then(function(r){return r.json();})
+      .then(function(r){loadUsers();toast('✅ Импортировано: '+r.imported);});
+  };
+  inp.click();
+}
+
+function createTemplate(){
+  var name=document.getElementById('t-name').value.trim();
+  var days=parseInt(document.getElementById('t-days').value)||30;
+  var limit=parseFloat(document.getElementById('t-limit').value)||0;
+  if(!name){toast('❌ Введите название!');return;}
+  api('POST','/templates',{name:name,expire_days:days,data_limit_gb:limit}).then(function(){
+    loadTemplates();
+    document.getElementById('t-name').value='';
+    toast('✅ Шаблон создан!');
+  });
+}
+
+function deleteTemplate(id){
+  if(!confirm('Удалить шаблон?')) return;
+  api('DELETE','/templates/'+id).then(function(){ loadTemplates(); toast('✅ Удалён'); });
+}
+
+function useTemplate(id){
+  var t=_templates&&_templates.find(function(x){return x.id===id;});
+  if(!t) return;
+  document.getElementById('u-days').value=t.expire_days;
+  document.getElementById('u-limit').value=t.data_limit_gb;
+  document.getElementById('u-note').value=t.note||'';
+  closeModal('modal-templates');
+  openModal('modal-add-user');
+  toast('✅ Шаблон применён!');
+}
+
+function loadAudit(){
+  api('GET','/logs?limit=100').then(function(rows){
+    if(!rows) return;
+    var html='';
+    if(!rows.length) html='<div style="color:var(--muted);text-align:center;padding:20px">Лог пуст</div>';
+    rows.forEach(function(r){
+      var d=new Date(r.created_at*1000);
+      html+='<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+        d.toLocaleDateString('ru')+' '+d.toLocaleTimeString('ru')+
+        ' <b style="color:var(--accent)">'+r.admin+'</b> '+r.action+'</div>';
+    });
+    document.getElementById('audit-list').innerHTML=html;
+    openModal('modal-audit');
+  });
+}
+
+
+
+function importUsers(){
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='.csv';
+  inp.onchange=function(){
+    var fd=new FormData();
+    fd.append('file',inp.files[0]);
+    fetch('/api/users/import',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd})
+      .then(function(r){return r.json();})
+      .then(function(r){loadUsers();toast('✅ Импортировано: '+r.imported);});
+  };
+  inp.click();
+}
+
+function createTemplate(){
+  var name=document.getElementById('t-name').value.trim();
+  var days=parseInt(document.getElementById('t-days').value)||30;
+  var limit=parseFloat(document.getElementById('t-limit').value)||0;
+  if(!name){toast('❌ Введите название!');return;}
+  api('POST','/templates',{name:name,expire_days:days,data_limit_gb:limit}).then(function(){
+    loadTemplates();
+    document.getElementById('t-name').value='';
+    toast('✅ Шаблон создан!');
+  });
+}
+
+function deleteTemplate(id){
+  if(!confirm('Удалить шаблон?')) return;
+  api('DELETE','/templates/'+id).then(function(){ loadTemplates(); toast('✅ Удалён'); });
+}
+
+function useTemplate(id){
+  var t=_templates&&_templates.find(function(x){return x.id===id;});
+  if(!t) return;
+  document.getElementById('u-days').value=t.expire_days;
+  document.getElementById('u-limit').value=t.data_limit_gb;
+  document.getElementById('u-note').value=t.note||'';
+  closeModal('modal-templates');
+  openModal('modal-add-user');
+  toast('✅ Шаблон применён!');
+}
+
+function loadAudit(){
+  api('GET','/logs?limit=100').then(function(rows){
+    if(!rows) return;
+    var html='';
+    if(!rows.length) html='<div style="color:var(--muted);text-align:center;padding:20px">Лог пуст</div>';
+    rows.forEach(function(r){
+      var d=new Date(r.created_at*1000);
+      html+='<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+        d.toLocaleDateString('ru')+' '+d.toLocaleTimeString('ru')+
+        ' <b style="color:var(--accent)">'+r.admin+'</b> '+r.action+'</div>';
+    });
+    document.getElementById('audit-list').innerHTML=html;
+    openModal('modal-audit');
+  });
+}
+
+
+function loadSysStats(){
+  api('GET','/system/stats').then(function(s){
+    if(!s) return;
+    var R=32, C=2*Math.PI*R;
+    function setEl(id,val){var e=document.getElementById(id);if(e)e.textContent=val;}
+    function setCircle(id,pct,color){
+      var e=document.getElementById(id);
+      if(!e) return;
+      e.style.strokeDashoffset=C-(pct/100)*C;
+      e.style.stroke=color||'#3fb950';
+    }
+    function getColor(pct){
+      if(pct>=80) return '#f85149';
+      if(pct>=50) return '#f0a500';
+      return '#3fb950';
+    }
+    setEl('sys-cpu', s.cpu_percent+'%');
+    setCircle('cpu-circle', s.cpu_percent, getColor(s.cpu_percent));
+    setEl('sys-ram', s.ram_percent+'%');
+    setCircle('ram-circle', s.ram_percent, getColor(s.ram_percent));
+    setEl('sys-ram-detail', s.ram_used_gb+' / '+s.ram_total_gb+' GB');
+    setEl('sys-disk', s.disk_percent+'%');
+    setCircle('disk-circle', s.disk_percent, getColor(s.disk_percent));
+    setEl('sys-disk-detail', s.disk_used_gb+' / '+s.disk_total_gb+' GB');
+    setEl('sys-recv', s.net_recv_gb+' GB');
+    setEl('sys-sent', s.net_sent_gb+' GB');
+    if(s.uptime_seconds){
+      var u=s.uptime_seconds;
+      var d=Math.floor(u/86400),h=Math.floor((u%86400)/3600),m=Math.floor((u%3600)/60);
+      var ut=d+'д '+h+'ч '+m+'м';
+      setEl('sys-uptime',ut);
+      setEl('sys-uptime2',ut);
+    }
+  });
+}
+
+
+function _resetChartBtns(){
+  ['chart-7d','chart-30d','chart-90d','chart-users','chart-proto','chart-nodes','chart-hourly'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.opacity='0.5';
+  });
+}
+function _drawChart(labels, datasets, type){
+  var canvas = document.getElementById('dash-chart');
+  if(!canvas) return;
+  if(window._chart){ window._chart.destroy(); window._chart=null; }
+  window._chart = new Chart(canvas.getContext('2d'), {
+    type: type||'bar',
+    data:{labels:labels, datasets:datasets},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8b949e'}}},
+      scales:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,0.05)'}},
+              y:{ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,0.05)'},beginAtZero:true}}}
+  });
+}
+
+function loadProtoChart(){
+  if(typeof Chart==='undefined'){setTimeout(loadProtoChart,500);return;}
+  _resetChartBtns();
+  var btn=document.getElementById('chart-proto'); if(btn) btn.style.opacity='1';
+  api('GET','/traffic/by-protocol?days=7').then(function(data){
+    if(!data||!data.length){
+      _drawChart(['Нет данных'],
+        [{label:'Нет данных',data:[0],backgroundColor:'rgba(88,166,255,0.5)'}]);
+      return;
+    }
+    var labels = data.map(function(d){return d.protocol;});
+    var up = data.map(function(d){return d.upload_gb;});
+    var down = data.map(function(d){return d.download_gb;});
+    _drawChart(labels,[
+      {label:'↑ Upload GB',data:up,backgroundColor:'rgba(88,166,255,0.8)',borderRadius:6},
+      {label:'↓ Download GB',data:down,backgroundColor:'rgba(63,185,80,0.8)',borderRadius:6}
+    ]);
+  });
+}
+
+function loadNodeChart(){
+  if(typeof Chart==='undefined'){setTimeout(loadNodeChart,500);return;}
+  _resetChartBtns();
+  var btn=document.getElementById('chart-nodes'); if(btn) btn.style.opacity='1';
+  api('GET','/traffic/by-node?days=7').then(function(data){
+    if(!data||!data.length){
+      _drawChart(['Нет данных'],
+        [{label:'Нет данных',data:[0],backgroundColor:'rgba(240,165,0,0.5)'}]);
+      return;
+    }
+    var labels = data.map(function(d){return d.node;});
+    var up = data.map(function(d){return d.upload_gb;});
+    var down = data.map(function(d){return d.download_gb;});
+    _drawChart(labels,[
+      {label:'↑ Upload GB',data:up,backgroundColor:'rgba(240,165,0,0.8)',borderRadius:6},
+      {label:'↓ Download GB',data:down,backgroundColor:'rgba(63,185,80,0.8)',borderRadius:6}
+    ]);
+  });
+}
+
+function loadHourlyChart(){
+  if(typeof Chart==='undefined'){setTimeout(loadHourlyChart,500);return;}
+  _resetChartBtns();
+  var btn=document.getElementById('chart-hourly'); if(btn) btn.style.opacity='1';
+  api('GET','/traffic/hourly?hours=24').then(function(data){
+    if(!data||!data.length){
+      _drawChart(['Нет данных'],
+        [{label:'Нет данных',data:[0],backgroundColor:'rgba(88,166,255,0.5)'}]);
+      return;
+    }
+    var labels = data.map(function(d){return d.label;});
+    var vless = data.map(function(d){return (d.vless_up+d.vless_down);});
+    var hy2 = data.map(function(d){return (d.hy2_up+d.hy2_down);});
+    _drawChart(labels,[
+      {label:'VLESS MB',data:vless,backgroundColor:'rgba(88,166,255,0.8)',borderRadius:4},
+      {label:'Hysteria2 MB',data:hy2,backgroundColor:'rgba(63,185,80,0.8)',borderRadius:4}
+    ]);
+  });
+}
+
+
+function loadBandwidth(){
+  api('GET','/bandwidth').then(function(d){
+    if(!d) return;
+    function setEl(id,val){ var e=document.getElementById(id); if(e) e.textContent=val; }
+    function setVs(id,obj){
+      var e=document.getElementById(id);
+      if(e&&obj){ e.textContent=obj.text; e.style.color=obj.color; }
+    }
+    setEl('bw-today', d.today);
+    setEl('bw-7d', d.last_7d);
+    setEl('bw-30d', d.last_30d);
+    setEl('bw-month', d.cal_month);
+    setEl('bw-year', d.year);
+    setVs('bw-today-vs', d.today_vs);
+    setVs('bw-7d-vs', d.last_7d_vs);
+    setVs('bw-30d-vs', d.last_30d_vs);
+  });
+}
+
+
+function loadDashStats(){
+  function setEl(id,val){ var e=document.getElementById(id); if(e) e.textContent=val; }
+  // Протоколы и ноды
+  api('GET','/traffic/by-protocol?days=7').then(function(data){
+    if(!data) return;
+    data.forEach(function(d){
+      if(d.protocol==='vless') setEl('stat-vless', round2(d.upload_gb+d.download_gb)+' GB');
+      if(d.protocol==='hysteria2') setEl('stat-hy2', round2(d.upload_gb+d.download_gb)+' GB');
+    });
+    if(!data.length){ setEl('stat-vless','0 GB'); setEl('stat-hy2','0 GB'); }
+  });
+  api('GET','/traffic/by-node?days=7').then(function(data){
+    if(!data) return;
+    data.forEach(function(d){
+      if(d.node==='main') setEl('stat-main', round2(d.upload_gb+d.download_gb)+' GB');
+      if(d.node==='ru75') setEl('stat-ru75', round2(d.upload_gb+d.download_gb)+' GB');
+    });
+    if(!data.length){ setEl('stat-main','0 GB'); setEl('stat-ru75','0 GB'); }
+  });
+  // Новых за 7 дней
+  api('GET','/traffic/daily?days=7').then(function(data){
+    if(!data) return;
+    var newU = data.reduce(function(s,d){return s+(d.new_users||0);},0);
+    var activeToday = data.length ? (data[data.length-1].active_users||0) : 0;
+    setEl('stat-new-users', newU);
+    setEl('stat-active-today', activeToday);
+  });
+  // DL/UL из system stats
+  api('GET','/system/stats').then(function(s){
+    if(!s) return;
+    setEl('stat-dl', s.net_recv_gb+' GB');
+    setEl('stat-ul', s.net_sent_gb+' GB');
+  });
+}
+
+function round2(n){ return Math.round(n*100)/100; }
+
+
+// Автообновление дашборда каждые 30 сек
+setInterval(function(){
+  var page = document.querySelector('.page.active');
+  if(page && page.id === 'page-dash'){
+    loadSysStats();
+    loadBandwidth();
+    loadDashStats();
+  }
+}, 30000);
+
+window.loadSysStats = loadSysStats;
+window.loadBandwidth = loadBandwidth;
+window.loadDashStats = loadDashStats;
+
+function showUserStats(u){
+  document.getElementById('ustat-name').textContent = u.username;
+  document.getElementById('ustat-traffic').textContent = fmtBytes(u.data_used||0);
+  document.getElementById('ustat-limit').textContent = u.data_limit ? fmtBytes(u.data_limit) : '∞';
+  document.getElementById('ustat-expire').textContent = fmtDate(u.expire_at);
+  document.getElementById('ustat-status').textContent = u.status;
+  // Загружаем статистику по протоколам из connection_logs
+  api('GET','/users/'+u.id+'/stats').then(function(s){
+    if(!s){ 
+      document.getElementById('ustat-proto').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Нет данных о подключениях</div>';
+      document.getElementById('ustat-nodes').innerHTML = '';
+      return;
+    }
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    html += '<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">';
+    html += '<div style="font-size:11px;color:var(--muted)">⚡ VLESS</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--accent)">'+fmtBytes((s.vless||0))+'</div></div>';
+    html += '<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">';
+    html += '<div style="font-size:11px;color:var(--muted)">🚀 Hysteria2</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--cyan)">'+fmtBytes((s.hysteria2||0))+'</div></div>';
+    html += '</div>';
+    document.getElementById('ustat-proto').innerHTML = html;
+    var nhtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">';
+    if(s.nodes) Object.keys(s.nodes).forEach(function(n){
+      nhtml += '<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">';
+      nhtml += '<div style="font-size:11px;color:var(--muted)">🖥 '+n+'</div>';
+      nhtml += '<div style="font-size:16px;font-weight:700">'+fmtBytes(s.nodes[n])+'</div></div>';
+    });
+    nhtml += '</div>';
+    document.getElementById('ustat-nodes').innerHTML = nhtml;
+  });
+  openModal('modal-user-stats');
+}
+
+// === GLOBALS ===
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.cpKey = cpKey;
+window.copyAllKeys = copyAllKeys;
+window.pingNode = pingNode;
+window.delNode = delNode;
+window.delBridge = delBridge;
+window.editHost = editHost;
+window.delHost = delHost;
+window.delAdmin = delAdmin;
+window.delBot = delBot;
+window.showKeys = showKeys;
+window.filterUsers = filterUsers;
+window.exportUsers = exportUsers;
+window.importUsers = importUsers;
+window.createTemplate = createTemplate;
+window.deleteTemplate = deleteTemplate;
+window.useTemplate = useTemplate;
+function editInbound(tag){
+  api('GET','/inbounds').then(function(inbounds){
+    var ib = (inbounds||[]).find(function(x){return x.tag===tag;});
+    if(!ib) return;
+    var tls=ib.raw.tls||{}, reality=tls.reality||{};
+    document.getElementById('edit-ib-tag').value=tag;
+    document.getElementById('edit-ib-port').value=ib.port;
+    document.getElementById('edit-ib-listen').value=ib.listen||'::';
+    document.getElementById('edit-ib-sni').value=tls.server_name||'';
+    if(reality.handshake){document.getElementById('edit-ib-hs-server').value=reality.handshake.server||'';document.getElementById('edit-ib-hs-port').value=reality.handshake.server_port||443;}
+    if(reality.short_id) document.getElementById('edit-ib-shortid').value=(reality.short_id||[''])[0];
+    openModal('modal-inbound-edit');
+  });
+}
+window.editInbound = editInbound;
+window.loadChart = loadChart;
+window.loadAudit = loadAudit;
+window.changeMainPass = changeMainPass;
+
+// loaders с inbounds и audit
+
+})();
+</script>
+
+<!-- Modal User Stats -->
+<div class="modal-overlay" id="modal-user-stats" onclick="if(event.target===this)closeModal('modal-user-stats')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">📊 Статистика: <span id="ustat-name"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-user-stats')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <div style="background:var(--bg3);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--muted)">Статус</div>
+          <div style="font-weight:700" id="ustat-status">—</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--muted)">Истекает</div>
+          <div style="font-weight:700" id="ustat-expire">—</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--muted)">Использовано</div>
+          <div style="font-weight:700" id="ustat-traffic">—</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--muted)">Лимит</div>
+          <div style="font-weight:700" id="ustat-limit">—</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700">ПО ПРОТОКОЛАМ</div>
+      <div id="ustat-proto"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:12px;margin-bottom:4px;font-weight:700">ПО НОДАМ</div>
+      <div id="ustat-nodes"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

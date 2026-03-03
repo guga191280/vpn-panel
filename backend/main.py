@@ -110,19 +110,11 @@ def create_node(node: NodeCreate, admin=Depends(verify_token)):
                      (node_id, node.name, node.host, node.ssh_port, node.api_port, node.api_token, node.country, json.dumps(node.protocols), "installing", int(time.time())))
         conn.commit(); conn.close()
         # Запускаем установку в фоне
-        sp.Popen(["python3", "/opt/vpn_panel/backend/auto_install_node.py",
+        sp.Popen(["/opt/vpn_panel/venv/bin/python3", "/opt/vpn_panel/backend/auto_install_node.py",
                   node_id, node.host, str(node.ssh_port), node.ssh_user, node.ssh_password,
                   node.name, node.country])
-        # Автоматически создаём hosts
-        try:
-            conn2 = get_db()
-            conn2.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
-                ('vless-in', node.name+' VLESS', node.host, 443, 'www.microsoft.com'))
-            conn2.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
-                ('hysteria2-in', node.name+' HY2', node.host, 8443, node.host))
-            conn2.commit()
-            conn2.close()
-        except: pass
+        # Хосты создаются в auto_install_node.py с правильными портами
+        pass
         return {"success": True, "id": node_id, "status": "installing"}
     else:
         conn.execute("INSERT INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -132,7 +124,7 @@ def create_node(node: NodeCreate, admin=Depends(verify_token)):
             conn.execute("INSERT INTO hosts (inbound_tag, remark, address, port, sni, active) VALUES (?,?,?,?,?,1)",
                 ('vless-in', node.name+' VLESS', node.host, 443, 'www.microsoft.com'))
             conn.execute("INSERT INTO hosts (inbound_tag, remark, address, port, sni, active) VALUES (?,?,?,?,?,1)",
-                ('hysteria2-in', node.name+' HY2', node.host, 8443, node.host))
+                ('hysteria2-in', node.name+' HY2', node.host, 20897, node.host))
         except: pass
         conn.commit()
         # Проверяем доступность

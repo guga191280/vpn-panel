@@ -181,9 +181,15 @@ systemctl daemon-reload && systemctl enable vpn-panel && systemctl restart vpn-p
     print(f"[{node_id}] Installing panel...")
     run_ssh(host, ssh_port, ssh_user, ssh_password, panel_cmd)
 
-    # 8. Обновляем статус ноды
+    # 8. Обновляем статус ноды и хосты
     conn = get_db()
     conn.execute("UPDATE nodes SET status='online', api_port=8080 WHERE id=?", (node_id,))
+    # Удаляем старые хосты этой ноды и создаём правильные
+    conn.execute("DELETE FROM hosts WHERE address=? AND remark LIKE ?", (host, f'%{node_name}%'))
+    conn.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
+        ('vless-in', node_name+' VLESS', host, vless_port, 'www.microsoft.com'))
+    conn.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
+        ('hysteria2-in', node_name+' HY2', host, hy2_port, host))
     conn.commit()
     conn.close()
 

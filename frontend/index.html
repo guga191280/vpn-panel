@@ -1381,8 +1381,9 @@ function loadDash() {
   loadChart('traffic', 7);
   // Загружаем активные соединения
   api('GET','/connections/count').then(function(r){
-    if(r && r.unique_users !== undefined)
-      document.getElementById('d-connections').textContent = r.unique_users;
+    if(r && r.count !== undefined){
+      document.getElementById('d-connections').textContent = r.unique_users || 0;
+    }
   });
 }
 
@@ -1395,6 +1396,16 @@ function loadUsers() {
 }
 
 function renderUsers(users) {
+  // Обновляем активные IP
+  api('GET','/connections/count').then(function(r){
+    if(!r) return;
+    window._activeConns = r;
+    // Распределяем по активным пользователям
+    window._activeIPs = {};
+    users.filter(function(u){return u.status==='active';}).forEach(function(u){
+      window._activeIPs[u.id] = r.unique_users;
+    });
+  });
   var tb = document.getElementById('users-tb');
   if(!users||!users.length){
     tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Нет пользователей</div></div></td></tr>';
@@ -1406,7 +1417,7 @@ function renderUsers(users) {
     var bc = pct>90?'red':pct>70?'yellow':'green';
     html += '<tr>';
     html += '<td><div style="font-weight:700">'+u.username+'</div>'+(u.note?'<div style="font-size:11px;color:var(--muted)">'+u.note+'</div>':'')+'</td>';
-    html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':u.status==='overlimit'?'badge-yellow':'badge-purple')+'">'+u.status+'</span></td>';
+    html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':u.status==='overlimit'?'badge-yellow':'badge-purple')+'">'+u.status+'</span>'; if(u.status==='active' && window._activeIPs && window._activeIPs[u.id]) html += ' <span style="font-size:11px;background:rgba(63,185,80,0.15);color:var(--green);padding:2px 6px;border-radius:4px">'+ window._activeIPs[u.id] +'IP</span>'; html += '</td>';
     html += '<td><div class="mono">'+fmtBytes(u.data_used||0)+' / '+(u.data_limit?fmtBytes(u.data_limit):'∞')+'</div>';
     if(u.data_limit) html += '<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div>';
     html += '</td>';

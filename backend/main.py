@@ -22,6 +22,18 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+# ===== AUDIT LOG =====
+def audit_log(admin, action, details=""):
+    try:
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO audit_log (admin, action, details, created_at) VALUES (?,?,?,?)",
+            (admin, action, details, int(__import__('time').time()))
+        )
+        conn.commit()
+        conn.close()
+    except: pass
+
 def init_db():
     conn = get_db()
     c = conn.cursor()
@@ -238,6 +250,7 @@ def create_user(user: UserCreate, admin=Depends(verify_token)):
     # Синхронизируем с Sing-box
     import subprocess
     subprocess.Popen(["/opt/vpn_panel/venv/bin/python3", "/opt/vpn_panel/backend/sync_users.py"])
+    audit_log("admin", "Создан пользователь", f"username: {user.username}")
     return {
         "success": True, 
         "id": user_id, 
@@ -271,10 +284,12 @@ def update_user(user_id: str, user: UserUpdate, admin=Depends(verify_token)):
 @app.delete("/api/users/{user_id}")
 def delete_user(user_id: str, admin=Depends(verify_token)):
     conn = get_db()
+    u = conn.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone()
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit(); conn.close()
     import subprocess
     subprocess.Popen(["/opt/vpn_panel/venv/bin/python3", "/opt/vpn_panel/backend/sync_users.py"])
+    if u: audit_log("admin", "Удалён пользователь", f"username: {u['username']}")
     return {"success": True}
 
 @app.get("/api/stats")
@@ -424,6 +439,7 @@ def login(creds: dict):
         token = secrets.token_hex(32)
         conn.execute("UPDATE admins SET token=? WHERE id=?", (token, admin["id"]))
         conn.commit(); conn.close()
+        audit_log(admin["username"], "Вход в систему")
         return {"token": token, "username": admin["username"], "role": "admin"}
     # Субадмин
     sub = conn.execute("SELECT * FROM subadmins WHERE username=? AND password_hash=?",
@@ -1503,17 +1519,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PANEL_PORT", "8080")))
 
-# ===== AUDIT LOG =====
-def audit_log(admin, action, details=""):
-    try:
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO audit_log (admin, action, details, created_at) VALUES (?,?,?,?)",
-            (admin, action, details, int(__import__('time').time()))
-        )
-        conn.commit()
-        conn.close()
-    except: pass
+
 
 
 @app.get("/api/users/export")

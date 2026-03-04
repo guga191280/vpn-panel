@@ -292,6 +292,21 @@ def delete_user(user_id: str, admin=Depends(verify_token)):
     if u: audit_log("admin", "Удалён пользователь", f"username: {u['username']}")
     return {"success": True}
 
+
+@app.get("/api/connections/count")
+def connections_count(admin=Depends(verify_token)):
+    try:
+        import requests as req
+        r = req.get("http://127.0.0.1:9090/connections", timeout=3)
+        if r.status_code == 200:
+            conns = r.json().get("connections", [])
+            # Уникальные IP = уникальные пользователи
+            ips = set(c.get("metadata",{}).get("sourceIP","") for c in conns)
+            ips.discard("")
+            return {"count": len(conns), "unique_users": len(ips)}
+    except: pass
+    return {"count": 0, "unique_users": 0}
+
 @app.get("/api/stats")
 def get_stats(admin=Depends(verify_token)):
     conn = get_db()

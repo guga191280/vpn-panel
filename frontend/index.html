@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VPN Panel</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -638,7 +640,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="page-title">Лог действий</div>
       <div class="page-sub">История всех операций в панели</div>
     </div>
-    <button class="btn btn-secondary btn-sm" onclick="loadAuditPage()">🔄 Обновить</button>
+    <button class="btn btn-secondary btn-sm" id="btn-audit-refresh">🔄 Обновить</button>
   </div>
   <div id="audit-page-list"></div>
 </div>
@@ -1377,6 +1379,11 @@ function loadDash() {
   loadBandwidth();
   loadDashStats();
   loadChart('traffic', 7);
+  // Загружаем активные соединения
+  api('GET','/connections/count').then(function(r){
+    if(r && r.unique_users !== undefined)
+      document.getElementById('d-connections').textContent = r.unique_users;
+  });
 }
 
 // USERS
@@ -2429,6 +2436,8 @@ function loadAuditPage(){
   });
 }
 window.loadAuditPage = loadAuditPage;
+var _btnAuditRefresh = document.getElementById('btn-audit-refresh');
+if(_btnAuditRefresh) _btnAuditRefresh.addEventListener('click', loadAuditPage);
 
 window.loadAudit = loadAudit;
 window.changeMainPass = changeMainPass;

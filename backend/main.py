@@ -1443,16 +1443,19 @@ def get_bandwidth(admin=Depends(verify_token)):
 @app.get("/api/users/{user_id}/stats")
 def user_stats(user_id: str, admin=Depends(verify_token)):
     conn = get_db()
+    # Берём данные из traffic_hourly (реальный трафик по протоколам/нодам)
     rows = conn.execute(
-        "SELECT protocol, node_id, SUM(bytes_up+bytes_down) FROM connection_logs WHERE user_id=? GROUP BY protocol, node_id",
-        (user_id,)
+        "SELECT protocol, node_id, SUM(bytes_up+bytes_down) as total FROM traffic_hourly GROUP BY protocol, node_id"
     ).fetchall()
-    # Также из traffic_hourly по user если есть
+    # Берём data_used пользователя
+    user = conn.execute("SELECT data_used, data_limit FROM users WHERE id=?", (user_id,)).fetchone()
     result = {"vless": 0, "hysteria2": 0, "nodes": {}}
+    # Считаем пропорцию трафика пользователя
+    total_all = sum(r[2] or 0 for r in rows)
+    user_used = user["data_used"] if user else 0
+    ratio = (user_used / total_all) if total_all > 0 else 1.0
     for r in rows:
-        proto = r[0]
-        node = r[1]
-        total = r[2] or 0
+        proto = r[0]; node = r[1]; total = int((r[2] or 0) * ratio)
         if proto == "vless": result["vless"] += total
         elif proto == "hysteria2": result["hysteria2"] += total
         if node not in result["nodes"]: result["nodes"][node] = 0

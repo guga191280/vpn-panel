@@ -1409,6 +1409,7 @@ function renderUsers(users) {
       var u = _users[parseInt(this.getAttribute('data-i'))];
       var a = this.getAttribute('data-a');
       if(a==='keys') showKeys(u);
+      else if(a==='stats') showUserStats(u);
       else if(a==='extend'){
         document.getElementById('extend-uid').value = u.id;
         document.getElementById('extend-username').textContent = u.username;
@@ -2363,6 +2364,7 @@ window.delHost = delHost;
 window.delAdmin = delAdmin;
 window.delBot = delBot;
 window.showKeys = showKeys;
+window.showUserStats = showUserStats;
 window.filterUsers = filterUsers;
 window.exportUsers = exportUsers;
 window.importUsers = importUsers;
@@ -2394,6 +2396,7 @@ window.toast = toast;
 window.copyText = copyText;
 window.copyAllKeys = copyAllKeys;
 window.showKeys = showKeys;
+window.showUserStats = showUserStats;
 window.openModal = openModal;
 window.closeModal = closeModal;
 })();

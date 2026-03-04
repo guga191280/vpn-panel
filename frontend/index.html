@@ -273,7 +273,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="ni" id="nav-traffic"><span class="ico">📈</span><span>Трафик</span></div>
       <div class="ni" id="nav-admins"><span class="ico">👮</span><span>Админы</span></div>
       <div class="ni" id="nav-bots"><span class="ico">🤖</span><span>Боты</span></div>
-      <div class="ni" id="nav-audit" onclick="loadAudit()"><span class="ico">📋</span><span>Лог действий</span></div>
+      <div class="ni" id="nav-audit" onclick="navTo('audit')"><span class="ico">📋</span><span>Лог действий</span></div>
       <div class="ni" id="nav-settings"><span class="ico">⚙️</span><span>Настройки</span></div>
     </div>
     <div class="sidebar-bottom">
@@ -632,7 +632,16 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       </div>
     </div>
 
-    <div class="page" id="page-audit"></div>
+    <div class="page" id="page-audit">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Лог действий</div>
+      <div class="page-sub">История всех операций в панели</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="loadAuditPage()">🔄 Обновить</button>
+  </div>
+  <div id="audit-page-list"></div>
+</div>
 
 
     <!-- INBOUNDS -->
@@ -1256,7 +1265,7 @@ function logout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-var pages = ['dash','users','nodes','bridges','hosts','traffic','admins','bots','settings','inbounds'];
+var pages = ['dash','users','nodes','bridges','hosts','traffic','admins','bots','settings','inbounds','audit'];
 function initApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -1307,7 +1316,7 @@ function navTo(name) {
   var loaders = {
     dash:loadDash, users:loadUsers, nodes:loadNodes,
     bridges:loadBridges, hosts:loadHosts, traffic:loadTraffic,
-    admins:loadAdmins, bots:loadBots, settings:loadSettingsPage, inbounds:loadInbounds
+    admins:loadAdmins, bots:loadBots, settings:loadSettingsPage, inbounds:loadInbounds, audit:loadAuditPage
   };
   if(loaders[name]) loaders[name]();
 }
@@ -2387,6 +2396,40 @@ function editInbound(tag){
 }
 window.editInbound = editInbound;
 window.loadChart = loadChart;
+
+function loadAuditPage(){
+  api('GET','/logs?limit=200').then(function(rows){
+    var el = document.getElementById('audit-page-list');
+    if(!el) return;
+    if(!rows||!rows.length){
+      el.innerHTML='<div style="color:var(--muted);text-align:center;padding:40px">Лог пуст</div>';
+      return;
+    }
+    var html='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">';
+    html+='<table style="width:100%;border-collapse:collapse">';
+    html+='<thead><tr style="background:var(--bg3)">';
+    html+='<th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--muted);font-weight:700">ВРЕМЯ</th>';
+    html+='<th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--muted);font-weight:700">АДМИН</th>';
+    html+='<th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--muted);font-weight:700">ДЕЙСТВИЕ</th>';
+    html+='<th style="padding:10px 16px;text-align:left;font-size:11px;color:var(--muted);font-weight:700">ДЕТАЛИ</th>';
+    html+='</tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      var d=new Date(r.created_at*1000);
+      var dt=d.toLocaleDateString('ru')+' '+d.toLocaleTimeString('ru');
+      var bg=i%2===0?'var(--bg2)':'var(--bg3)';
+      html+='<tr style="background:'+bg+';border-top:1px solid var(--border)">';
+      html+='<td style="padding:10px 16px;font-size:12px;color:var(--muted);white-space:nowrap">'+dt+'</td>';
+      html+='<td style="padding:10px 16px;font-size:13px"><b style="color:var(--accent)">'+r.admin+'</b></td>';
+      html+='<td style="padding:10px 16px;font-size:13px">'+r.action+'</td>';
+      html+='<td style="padding:10px 16px;font-size:12px;color:var(--muted)">'+((r.details&&r.details!=='null')?r.details:'')+'</td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+    el.innerHTML=html;
+  });
+}
+window.loadAuditPage = loadAuditPage;
+
 window.loadAudit = loadAudit;
 window.changeMainPass = changeMainPass;
 

@@ -52,42 +52,28 @@ def sync_remote_node(node_id, users, node_cfg):
 
 def sync_fin_node(users):
     try:
-        import requests as _req
-        # Читаем конфиг финского сервера через SSH и обновляем
-        fin_config_url = 'http://fin243.alexanderoff.store:9090'
-        # Проверяем доступность
-        r = _req.get(fin_config_url+'/version', timeout=3)
-        if r.status_code != 200:
-            print('⚠️ Finland нода недоступна')
-            return
-        # Получаем текущий конфиг финского сервера через SSH
-        import sys; sys.path.insert(0, '/opt/vpn_panel/venv/lib/python3.12/site-packages'); import paramiko
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        import sys as _sys
+        _sys.path.insert(0, '/opt/vpn_panel/venv/lib/python3.12/site-packages')
+        import paramiko
         conn2 = sqlite3.connect(DB_PATH)
-        node = conn2.execute("SELECT host,port FROM nodes WHERE id='fin'").fetchone()
+        node = conn2.execute("SELECT host,port FROM nodes WHERE id='dfb6cf92'").fetchone()
+        fin_pass = conn2.execute("SELECT value FROM settings WHERE key='fin_ssh_pass'").fetchone()
         conn2.close()
         if not node: return
-        # Пароль финского сервера хранится в настройках
-        cfg2 = conn2b = sqlite3.connect(DB_PATH)
-        fin_pass = conn2b.execute("SELECT value FROM settings WHERE key='fin_ssh_pass'").fetchone()
-        conn2b.close()
-        fin_pass = fin_pass[0] if fin_pass else 'changeme'
-        ssh.connect(node[0], port=node[1] or 22, username='root', password=fin_pass, timeout=5)
+        fin_pass = fin_pass[0] if fin_pass else 'alexander77'
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(node[0], port=node[1] or 22, username='root', password=fin_pass, timeout=10)
         stdin, stdout, stderr = ssh.exec_command('cat /etc/sing-box/config.json')
         cfg = json.loads(stdout.read())
-        user_list = [{"uuid": u[0], "flow": "xtls-rprx-vision"} for u in users]
         for inb in cfg.get('inbounds', []):
-            if inb.get('type') in ('vless', 'hysteria2'):
-                if inb['type'] == 'vless':
-                    inb['users'] = user_list
-                else:
-                    inb['users'] = [{"password": u[0]} for u in users]
-        new_cfg = json.dumps(cfg, indent=2)
-        # Записываем через sftp
+            if inb.get('type') == 'vless':
+                inb['users'] = [{"uuid": u[0], "flow": "xtls-rprx-vision"} for u in users]
+            elif inb.get('type') == 'hysteria2':
+                inb['users'] = [{"password": u[0]} for u in users]
         sftp = ssh.open_sftp()
         with sftp.open('/etc/sing-box/config.json', 'w') as f:
-            f.write(new_cfg)
+            f.write(json.dumps(cfg, indent=2))
         sftp.close()
         ssh.exec_command('systemctl restart sing-box')
         ssh.close()
@@ -95,11 +81,12 @@ def sync_fin_node(users):
     except Exception as e:
         print(f'⚠️ Finland sync error: {e}')
 
+
+
 def sync():
     conn = sqlite3.connect(DB_PATH)
     users = conn.execute("SELECT id, username FROM users WHERE status='active'").fetchall()
     conn.close()
-    
     sync_main_node(users)
     sync_fin_node(users)
     print(f'✅ Синхронизировано {len(users)} пользователей')

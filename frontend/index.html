@@ -754,9 +754,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button class="btn btn-secondary btn-sm" onclick="copyAllKeys()">📋 Скопировать все</button>
       </div>
-      <div style="margin-bottom:10px">
-        <button class="btn btn-secondary btn-sm" onclick="copyAllKeys()">📋 Скопировать все</button>
-      </div>
+
       <div class="keys-grid" id="keys-grid"></div>
     </div>
     <div class="modal-footer">
@@ -1205,6 +1203,14 @@ function copyText(txt) {
   }
 }
 
+// Глобальный доступ — объявляем сразу
+window.toast = function(m,d){ toast(m,d); };
+window.copyText = function(t){ copyText(t); };
+window.copyAllKeys = function(){ copyAllKeys(); };
+window.showKeys = function(u){ showKeys(u); };
+window.openModal = function(id){ openModal(id); };
+window.closeModal = function(id){ closeModal(id); };
+
 function fmtBytes(b) {
   if(!b) return '0 MB';
   if(b >= 1073741824) return (b/1073741824).toFixed(2)+' GB';
@@ -1443,50 +1449,53 @@ document.getElementById('btn-submit-user').onclick = function(){
 // KEYS
 function showKeys(u) {
   document.getElementById('keys-username').textContent = u.username;
-  var domain = localStorage.getItem('vpn_domain') || window.location.origin;
-  var subUrl = u.sub_token ? domain+'/sub/'+u.sub_token : '';
-  var keys = [
-    {label:'🌍 Главный — VLESS', color:'var(--accent)', val:u.subscription_url},
-    {label:'🌍 Главный — Hysteria2', color:'var(--accent)', val:u.hysteria2_url},
-    {label:'🌉 Мост — VLESS', color:'var(--cyan)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return Object.entries(k).filter(function(e){return e[0].includes('bridge')&&e[0].includes('vless')})[0]||[,''];} catch(e){return [,''];}}())[1]||u.vless_main_bridge},
-    {label:'🌉 Мост — HY2', color:'var(--cyan)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return Object.entries(k).filter(function(e){return e[0].includes('bridge')&&e[0].includes('hy2')})[0]||[,''];} catch(e){return [,''];}}())[1]||u.hy2_main_bridge},
-    {label:'🇫🇮 Finland — VLESS', color:'var(--green)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return k.vless_fin||'';} catch(e){return '';}}())||u.vless_ru75},
-    {label:'🇫🇮 Finland — HY2', color:'var(--green)', val:(function(){try{var k=JSON.parse(u.all_keys||'{}');return k.hy2_fin||'';} catch(e){return '';}}())||u.hy2_ru75},
-  ];
-  var html = '';
-  if(subUrl){
-    html += '<div class="key-item" style="border-color:rgba(227,179,65,0.4)" onclick="cpKey(this)">';
-    html += '<div class="key-label" style="color:var(--yellow)">🔗 Ссылка подписки</div>';
-    html += '<div class="key-value">'+subUrl+'</div>';
-    html += '<div class="key-copied">✓ Скопировано</div></div>';
-  }
-  keys.forEach(function(k){
-    if(!k.val) return;
-    html += '<div class="key-item" onclick="cpKey(this)">';
-    html += '<div class="key-label" style="color:'+k.color+'">'+k.label+'</div>';
-    html += '<div class="key-value">'+k.val+'</div>';
-    html += '<div class="key-copied">✓ Скопировано</div></div>';
-  });
-  document.getElementById('keys-grid').innerHTML = html||'<div class="empty"><div class="empty-icon">🔑</div><div class="empty-text">Нет ключей</div></div>';
+  document.getElementById('keys-grid').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">⏳ Загрузка...</div>';
   openModal('modal-keys');
+  api('GET', '/users/' + u.id + '/keys').then(function(data) {
+    if (!data || !data.keys) return;
+    var html = '';
+    if (data.sub_url) {
+      html += '<div style="margin-bottom:12px">';
+      html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">🔗 Ссылка подписки</div>';
+      html += '<div style="display:flex;gap:8px;align-items:center">';
+      html += '<input class="form-input" style="font-size:11px" readonly data-copy="1" value="' + data.sub_url + '">';
+      html += '<button class="btn btn-sm btn-secondary copy-btn">📋</button>';
+      html += '</div></div>';
+    }
+    data.keys.forEach(function(k) {
+      var color = k.type === 'vless' ? 'var(--accent)' : 'var(--cyan)';
+      html += '<div style="margin-bottom:12px">';
+      html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">' + k.label + '</div>';
+      html += '<div style="display:flex;gap:8px;align-items:center">';
+      html += '<input class="form-input" style="font-size:11px;color:' + color + '" readonly data-copy="1" value="' + k.key + '">';
+      html += '<button class="btn btn-sm btn-secondary copy-btn">📋</button>';
+      html += '</div></div>';
+    });
+    var grid = document.getElementById('keys-grid');
+    grid.innerHTML = html || '<div style="color:var(--muted)">Нет ключей</div>';
+    grid.querySelectorAll('.copy-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var inp = this.previousElementSibling;
+        var txt = inp ? inp.value : '';
+        if (txt) {
+          try { navigator.clipboard.writeText(txt); } catch(e) {
+            var ta = document.createElement('textarea');
+            ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+            document.body.appendChild(ta); ta.focus(); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+          }
+          btn.textContent = '✅';
+          setTimeout(function(){ btn.textContent = '📋'; }, 1500);
+        }
+      });
+    });
+  });
 }
-
-function cpKey(el){
-  var v = el.querySelector('.key-value');
-  if(!v) return;
-  copyText(v.textContent.trim());
-  el.classList.add('copied');
-  setTimeout(function(){ el.classList.remove('copied'); }, 1500);
-  toast('✅ Скопировано!');
-}
-
-function copyAllKeys(){
-  var items = document.querySelectorAll('#keys-grid .key-value');
-  var vals = [];
-  items.forEach(function(v){ if(v.textContent.trim()) vals.push(v.textContent.trim()); });
+function copyAllKeys() {
+  var inputs = document.querySelectorAll('#keys-grid input');
+  var vals = Array.from(inputs).map(function(i){return i.value;}).filter(Boolean);
   if(vals.length){ copyText(vals.join('\n')); toast('✅ Все ключи скопированы!'); }
 }
-
 // EXTEND
 document.getElementById('btn-submit-extend').onclick = function(){
   var uid = document.getElementById('extend-uid').value;
@@ -2381,6 +2390,12 @@ window.changeMainPass = changeMainPass;
 
 // loaders с inbounds и audit
 
+window.toast = toast;
+window.copyText = copyText;
+window.copyAllKeys = copyAllKeys;
+window.showKeys = showKeys;
+window.openModal = openModal;
+window.closeModal = closeModal;
 })();
 </script>
 

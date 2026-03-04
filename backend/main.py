@@ -106,8 +106,8 @@ def create_node(node: NodeCreate, admin=Depends(verify_token)):
     
     # Если запрошена автоустановка — запускаем в фоне
     if node.auto_install and node.ssh_password:
-        conn.execute("INSERT INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                     (node_id, node.name, node.host, node.ssh_port, node.api_port, node.api_token, node.country, json.dumps(node.protocols), "installing", int(time.time())))
+        conn.execute("INSERT INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,created_at,ssh_user,ssh_password) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                     (node_id, node.name, node.host, node.ssh_port, node.api_port, node.api_token, node.country, json.dumps(node.protocols), "installing", int(time.time()), node.ssh_user, node.ssh_password))
         conn.commit(); conn.close()
         # Запускаем установку в фоне
         sp.Popen(["/opt/vpn_panel/venv/bin/python3", "/opt/vpn_panel/backend/auto_install_node.py",
@@ -117,8 +117,8 @@ def create_node(node: NodeCreate, admin=Depends(verify_token)):
         pass
         return {"success": True, "id": node_id, "status": "installing"}
     else:
-        conn.execute("INSERT INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                     (node_id, node.name, node.host, node.ssh_port, node.api_port, node.api_token, node.country, json.dumps(node.protocols), "offline", int(time.time())))
+        conn.execute("INSERT INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,created_at,ssh_user,ssh_password) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                     (node_id, node.name, node.host, node.ssh_port, node.api_port, node.api_token, node.country, json.dumps(node.protocols), "offline", int(time.time()), node.ssh_user, node.ssh_password))
         # Автоматически создаём hosts для ноды
         try:
             conn.execute("INSERT INTO hosts (inbound_tag, remark, address, port, sni, active) VALUES (?,?,?,?,?,1)",
@@ -753,11 +753,15 @@ def get_subscription(sub_token: str, request: Request):
         conn.close()
         raise HTTPException(status_code=404)
     
-    keys = []
-    for field in ['subscription_url','hysteria2_url','vless_ru75','hy2_ru75','vless_main_bridge','hy2_main_bridge']:
-        val = user[field]
-        if val:
-            keys.append(val)
+    # Динамически генерируем ключи через keygen
+    user_uuid = user['id']
+    # Получаем UUID из subscription_url если есть
+    if user['subscription_url'] and 'vless://' in user['subscription_url']:
+        import re as _re
+        m = _re.search(r'vless://([^@]+)@', user['subscription_url'])
+        if m: user_uuid = m.group(1)
+    sub_content = keygen.generate_sub(user_uuid)
+    keys = [l for l in sub_content.split('\n') if l.strip()]
     
     conn.close()
     sub_content = "\n".join(keys)
@@ -1455,6 +1459,42 @@ def user_stats(user_id: str, admin=Depends(verify_token)):
         result["nodes"][node] += total
     conn.close()
     return result
+
+
+@app.get("/api/users/{user_id}/keys")
+def get_user_keys(user_id: str, admin=Depends(verify_token)):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+    conn.close()
+    if not user:
+        raise HTTPException(status_code=404)
+    # Получаем UUID из subscription_url
+    import re as _re
+    user_uuid = user["id"]
+    if user["subscription_url"] and "vless://" in user["subscription_url"]:
+        m = _re.search(r"vless://([^@]+)@", user["subscription_url"])
+        if m: user_uuid = m.group(1)
+    keys = keygen.generate_keys(user_uuid)
+    result = []
+    for k, v in keys.items():
+        if k in ("vless_main", "vless"): continue
+        if "vless" in k.lower():
+            result.append({"label": k.replace("vless_","").replace("_"," ").title(), "type": "vless", "key": v})
+        elif "hy2" in k.lower():
+            result.append({"label": k.replace("hy2_","").replace("_"," ").title(), "type": "hysteria2", "key": v})
+    conn2 = get_db()
+    sub_tok = conn2.execute("SELECT sub_token FROM users WHERE id=?", (user_id,)).fetchone()
+    conn2.close()
+    settings = {}
+    try:
+        c = get_db()
+        rows = c.execute("SELECT key,value FROM settings").fetchall()
+        c.close()
+        settings = {r["key"]:r["value"] for r in rows}
+    except: pass
+    domain = settings.get("panel_domain","").rstrip("/") or ""
+    sub_url = f"{domain}/sub/{sub_tok['sub_token']}" if sub_tok and sub_tok['sub_token'] else ""
+    return {"keys": result, "sub_url": sub_url, "username": user["username"]}
 
 if __name__ == "__main__":
     import uvicorn

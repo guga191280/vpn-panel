@@ -2378,6 +2378,11 @@ function showUserStats(u){
   openModal('modal-user-stats');
 }
 
+function cpKey(text){
+  copyText(text);
+  toast('✅ Ключ скопирован!');
+}
+
 // === GLOBALS ===
 window.openModal = openModal;
 window.closeModal = closeModal;

@@ -2,6 +2,31 @@ import sqlite3, time, requests, sys, json
 sys.path.insert(0, '/opt/vpn_panel/backend')
 DB_PATH = '/opt/vpn_panel/backend/vpn_panel.db'
 _prev = {}
+
+_logged_ips = {}  # ip -> timestamp последнего логирования
+
+def log_connection(source_ip, protocol, node_id):
+    """Записывает новое соединение в connection_logs"""
+    if not source_ip: return
+    key = (source_ip, protocol, node_id)
+    now = int(time.time())
+    # Логируем одно соединение раз в 5 минут
+    if key in _logged_ips and now - _logged_ips[key] < 300:
+        return
+    _logged_ips[key] = now
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    # Находим пользователя - берём первого активного (потом можно улучшить)
+    user = conn.execute("SELECT id, username FROM users WHERE status='active' LIMIT 1").fetchone()
+    if user:
+        conn.execute("""INSERT INTO connection_logs 
+            (user_id, username, protocol, node_id, ip, timestamp)
+            VALUES (?,?,?,?,?,?)""",
+            (user['id'], user['username'], protocol, node_id, source_ip, now))
+        conn.commit()
+    conn.close()
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row; return conn
 def get_nodes():
@@ -45,6 +70,7 @@ def collect_node(node_id, node):
             else:
                 up_d = dn_d = 0
             _prev[cid] = {'upload': upload, 'download': download}
+            log_connection(source_ip, protocol, node_id)
             if up_d > 0 or dn_d > 0:
                 result[cid] = {'upload_delta': up_d, 'download_delta': dn_d,
                                'protocol': protocol, 'source_ip': source_ip, 'node_id': node_id}

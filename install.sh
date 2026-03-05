@@ -39,7 +39,7 @@ header "3. PYTHON"
 cd $PANEL_DIR
 python3 -m venv venv >/dev/null 2>&1
 venv/bin/pip install --upgrade pip -q
-venv/bin/pip install fastapi uvicorn requests aiofiles python-multipart -q
+venv/bin/pip install fastapi uvicorn requests aiofiles python-multipart aiohttp psutil -q
 ok "Python готов"
 
 header "4. SING-BOX"

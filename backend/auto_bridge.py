@@ -99,11 +99,11 @@ echo "iptables OK"
     # 5. Добавляем хосты в БД
     conn = get_db()
     # Удаляем старые хосты для этого моста
-    conn.execute("DELETE FROM hosts WHERE address=? AND remark LIKE 'Bridge%'", (ru_ip,))
+    # Не удаляем старые мосты — только добавляем новый (проверяем дубли)
     # Добавляем новые с правильными портами
-    conn.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
+    conn.execute("INSERT OR IGNORE INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
         ('vless-in', f'Bridge VLESS ({foreign_ip})', ru_ip, vless_port, 'www.microsoft.com'))
-    conn.execute("INSERT INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
+    conn.execute("INSERT OR IGNORE INTO hosts (inbound_tag,remark,address,port,sni,active) VALUES (?,?,?,?,?,1)",
         ('hysteria2-in', f'Bridge HY2 ({foreign_ip})', ru_ip, hy2_port, ru_ip))
     conn.commit()
     conn.close()

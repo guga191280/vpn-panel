@@ -35,8 +35,23 @@ def generate_keys(uuid):
             else:
                 node = next((n for n in nodes.values() if n["host"] == address), None)
                 if node:
-                    pbk = node.get("public_key","")
-                    sid = node.get("short_id","")
+                    pbk = node.get("public_key","") or ""
+                    sid = node.get("short_id","") or ""
+                    # Если пустые — читаем напрямую из sing-box конфига (для main ноды)
+                    if not pbk and node.get("id") == "main":
+                        try:
+                            import json as _j
+                            with open("/etc/sing-box/config.json") as _f:
+                                _cfg = _j.load(_f)
+                            for _inb in _cfg.get("inbounds", []):
+                                _tls = _inb.get("tls", {})
+                                _r = _tls.get("reality", {})
+                                if _r.get("enabled"):
+                                    pbk = _r.get("public_key", "")
+                                    _sids = _r.get("short_id", [])
+                                    sid = _sids[0] if _sids else ""
+                                    break
+                        except: pass
                 else:
                     pbk = sid = ""
             if pbk and sid:

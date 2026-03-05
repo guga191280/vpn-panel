@@ -1079,6 +1079,19 @@ def update_note(uid: str, data: dict, admin=Depends(verify_token)):
     return {"ok": True}
 
 # ===== USER DETAIL =====
+
+@app.get("/api/logs/autodiag")
+def get_autodiag_log(admin=Depends(verify_token)):
+    try:
+        with open('/opt/vpn_panel/autodiag.log', 'r') as f:
+            lines = f.readlines()
+        # Последние 100 строк в обратном порядке
+        lines = [l.strip() for l in lines if l.strip()][-100:]
+        lines.reverse()
+        return {"lines": lines}
+    except:
+        return {"lines": []}
+
 @app.get("/api/logs")
 def get_audit(limit: int = 50, admin=Depends(verify_token)):
     conn = get_db()

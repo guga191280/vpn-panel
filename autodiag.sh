@@ -1,45 +1,41 @@
 #!/bin/bash
-# Авто-диагностика и авто-восстановление VPN Panel
 LOG="/opt/vpn_panel/autodiag.log"
 MAX_LINES=500
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOG; }
 
-# Обрезаем лог если больше 500 строк
+# Обрезаем лог
 lines=$(wc -l < $LOG 2>/dev/null || echo 0)
 [ $lines -gt $MAX_LINES ] && tail -$MAX_LINES $LOG > $LOG.tmp && mv $LOG.tmp $LOG
 
-TG_ADMIN=$(python3 -c "
-import sqlite3
-conn = sqlite3.connect('/opt/vpn_panel/backend/vpn_panel.db')
-r = conn.execute(\"SELECT value FROM settings WHERE key='tg_admin_id'\").fetchone()
-print(r[0] if r and r[0] else '')
-conn.close()
-" 2>/dev/null)
+log "🔍 Проверка запущена"
 
 check_service() {
     local name=$1
-    if ! systemctl is-active --quiet $name; then
-        log "⚠️  $name не работает — перезапускаем..."
+    if systemctl is-active --quiet $name; then
+        log "✅ $name — работает"
+    else
+        log "⚠️  $name — не работает, перезапускаем..."
         systemctl restart $name
         sleep 3
         if systemctl is-active --quiet $name; then
-            log "✅ $name перезапущен успешно"
+            log "✅ $name — перезапущен успешно"
         else
-            log "❌ $name НЕ удалось перезапустить!"
+            log "❌ $name — НЕ удалось перезапустить!"
         fi
     fi
 }
 
-# Проверяем сервисы
 check_service vpn-panel
 check_service sing-box
 check_service nginx
 
-# Проверяем API панели
-HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8080/api/stats -H "Authorization: Bearer dummy" 2>/dev/null)
-if [ "$HTTP" = "000" ]; then
-    log "⚠️  API панели не отвечает — перезапускаем vpn-panel..."
+# Проверяем API
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8080/ 2>/dev/null)
+if [ "$HTTP" = "200" ] || [ "$HTTP" = "401" ] || [ "$HTTP" = "307" ]; then
+    log "✅ API панели — отвечает ($HTTP)"
+else
+    log "❌ API панели — не отвечает ($HTTP), перезапускаем..."
     systemctl restart vpn-panel
     sleep 3
 fi
@@ -47,16 +43,20 @@ fi
 # Проверяем финскую ноду
 FIN_OK=$(sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
     root@fin243.alexanderoff.store "systemctl is-active sing-box" 2>/dev/null)
-if [ "$FIN_OK" != "active" ]; then
-    log "⚠️  Finland sing-box не работает — перезапускаем..."
+if [ "$FIN_OK" = "active" ]; then
+    log "✅ Finland sing-box — работает"
+else
+    log "⚠️  Finland sing-box — не работает, перезапускаем..."
     sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
         root@fin243.alexanderoff.store "systemctl restart sing-box" 2>/dev/null
     sleep 3
     FIN_OK2=$(sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
         root@fin243.alexanderoff.store "systemctl is-active sing-box" 2>/dev/null)
     if [ "$FIN_OK2" = "active" ]; then
-        log "✅ Finland sing-box перезапущен"
+        log "✅ Finland sing-box — перезапущен успешно"
     else
-        log "❌ Finland sing-box не запустился!"
+        log "❌ Finland sing-box — НЕ запустился!"
     fi
 fi
+
+log "─────────────────────────────"

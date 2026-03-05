@@ -643,6 +643,11 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <button class="btn btn-secondary btn-sm" id="btn-audit-refresh">🔄 Обновить</button>
   </div>
   <div id="audit-page-list"></div>
+
+  <div style="margin-top:24px">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🤖 Авто-диагностика</div>
+    <div id="autodiag-log" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;font-family:monospace;font-size:12px;max-height:300px;overflow-y:auto"></div>
+  </div>
 </div>
 
 
@@ -2449,6 +2454,19 @@ function loadAuditPage(){
     });
     html+='</tbody></table></div>';
     el.innerHTML=html;
+  });
+  // Загружаем autodiag лог
+  api('GET','/logs/autodiag').then(function(r){
+    var el2 = document.getElementById('autodiag-log');
+    if(!el2) return;
+    if(!r || !r.lines || !r.lines.length){
+      el2.innerHTML='<span style="color:var(--muted)">Лог пуст — всё работает нормально</span>';
+      return;
+    }
+    el2.innerHTML = r.lines.map(function(l){
+      var color = l.includes('❌')?'var(--red)':l.includes('⚠️')?'var(--yellow)':l.includes('✅')?'var(--green)':'var(--muted)';
+      return '<div style="color:'+color+';padding:2px 0;border-bottom:1px solid var(--border)">'+l+'</div>';
+    }).join('');
   });
 }
 window.loadAuditPage = loadAuditPage;

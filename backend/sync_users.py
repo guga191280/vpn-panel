@@ -1,6 +1,9 @@
 import json, sqlite3, os, sys
 sys.path.insert(0, '/opt/vpn_panel/venv/lib/python3.12/site-packages')
-import paramiko
+try:
+    import paramiko
+except ImportError:
+    paramiko = None
 
 DB_PATH = '/opt/vpn_panel/backend/vpn_panel.db'
 

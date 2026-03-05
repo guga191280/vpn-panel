@@ -182,6 +182,13 @@ if [ "${INSTALL_SINGBOX:-Y}" = "Y" ] || [ "${INSTALL_SINGBOX}" = "y" ]; then
     { "type": "direct", "tag": "direct" }
   ],
   "route": { "rules": [], "final": "direct" }
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "secret": ""
+    }
+  }
 }
 SBEOF
     ok "Конфиг sing-box создан"

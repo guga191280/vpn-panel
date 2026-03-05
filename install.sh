@@ -147,9 +147,9 @@ if 'remark' not in cols:
     conn.execute("ALTER TABLE hosts ADD COLUMN remark TEXT DEFAULT ''")
 conn.execute("DELETE FROM hosts")
 conn.execute("INSERT INTO hosts (inbound_tag,name,remark,address,port,sni,status) VALUES (?,?,?,?,?,?,?)",
-    ('vless-in','de VLESS','de VLESS',ip,4443,'www.microsoft.com',1))
+    ('vless-in', domain+' VLESS', domain+' VLESS', ip, 4443,'www.microsoft.com',1))
 conn.execute("INSERT INTO hosts (inbound_tag,name,remark,address,port,sni,status) VALUES (?,?,?,?,?,?,?)",
-    ('hysteria2-in','de HY2','de HY2',ip,20897,ip,1))
+    ('hysteria2-in', domain+' HY2', domain+' HY2', ip, 20897, ip, 1))
 conn.commit(); conn.close()
 print("Hosts добавлены")
 HOSTSEOF

@@ -342,7 +342,7 @@ class BridgeCreate(BaseModel):
 @app.get("/api/bridges")
 def get_bridges(admin=Depends(verify_token)):
     conn = get_db()
-    bridges = conn.execute("SELECT * FROM bridges WHERE active=1").fetchall()
+    bridges = conn.execute("SELECT * FROM bridges WHERE status='active'").fetchall()
     conn.close()
     return [dict(b) for b in bridges]
 
@@ -368,7 +368,7 @@ def create_bridge(bridge: BridgeCreate, admin=Depends(verify_token)):
 @app.delete("/api/bridges/{bridge_id}")
 def delete_bridge(bridge_id: int, admin=Depends(verify_token)):
     conn = get_db()
-    conn.execute("UPDATE bridges SET active=0 WHERE id=?", (bridge_id,))
+    conn.execute("UPDATE bridges SET status='inactive' WHERE id=?", (bridge_id,))
     conn.commit()
     conn.close()
     return {"success": True}
@@ -382,7 +382,10 @@ def check_nodes_status():
     while True:
         try:
             conn = get_db()
-            nodes = conn.execute("SELECT id, host, api_port, api_token FROM nodes WHERE status != 'installing'").fetchall()
+            nodes = conn.execute("SELECT id, host, api_port, api_token FROM nodes WHERE status != 'installing' AND id != 'main'").fetchall()
+            # Главная нода всегда online
+            conn.execute("UPDATE nodes SET status='online' WHERE id='main'")
+            conn.commit()
             conn.close()
             for node in nodes:
                 nid, host, api_port, token = node

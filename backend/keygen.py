@@ -9,9 +9,9 @@ def get_db():
 
 def generate_keys(uuid):
     conn = get_db()
-    hosts = conn.execute("SELECT * FROM hosts WHERE active=1").fetchall()
+    hosts = conn.execute("SELECT * FROM hosts WHERE status=1").fetchall()
     nodes = {n["id"]: dict(n) for n in conn.execute("SELECT * FROM nodes WHERE status='online'").fetchall()}
-    bridges = [dict(b) for b in conn.execute("SELECT * FROM bridges WHERE active=1").fetchall()]
+    bridges = [dict(b) for b in conn.execute("SELECT * FROM bridges WHERE status=1").fetchall()]
     conn.close()
 
     keys = {}
@@ -47,7 +47,12 @@ def generate_keys(uuid):
                                 _tls = _inb.get("tls", {})
                                 _r = _tls.get("reality", {})
                                 if _r.get("enabled"):
-                                    pbk = _r.get("public_key", "")
+                                    # public_key нужно брать из БД, не из конфига (там private_key)
+                                    from sqlite3 import connect as _conn
+                                    _db = _conn('/opt/vpn_panel/backend/vpn_panel.db')
+                                    _r2 = _db.execute("SELECT value FROM settings WHERE key='public_key'").fetchone()
+                                    if _r2: pbk = _r2[0]
+                                    else: pbk = _r.get("public_key", "")
                                     _sids = _r.get("short_id", [])
                                     sid = _sids[0] if _sids else ""
                                     break

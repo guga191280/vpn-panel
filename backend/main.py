@@ -80,14 +80,14 @@ class NodeUpdate(BaseModel):
 class UserCreate(BaseModel):
     username: str
     telegram_id: str = None
-    data_limit_gb: float = 0
+    data_limit_mb: float = 0
     expire_days: int = 0
     node_ids: list = []
     note: str = ""
 
 class UserUpdate(BaseModel):
     status: str = None
-    data_limit_gb: float = None
+    data_limit_mb: float = None
     expire_days: int = None
     note: str = None
 
@@ -197,11 +197,11 @@ async def ping_node(node_id: str, admin=Depends(verify_token)):
 
 class UserCreate(BaseModel):
     username: str; telegram_id: Optional[str] = None
-    data_limit_gb: float = 0; expire_days: int = 0
+    data_limit_mb: float = 0; expire_days: int = 0
     node_ids: List[str] = []; note: str = ""
 
 class UserUpdate(BaseModel):
-    status: Optional[str] = None; data_limit_gb: Optional[float] = None
+    status: Optional[str] = None; data_limit_mb: Optional[float] = None
     expire_days: Optional[int] = None; node_ids: Optional[List[str]] = None
     note: Optional[str] = None
 
@@ -223,7 +223,7 @@ def create_user(user: UserCreate, admin=Depends(verify_token)):
     if conn.execute("SELECT id FROM users WHERE username = ?", (user.username,)).fetchone():
         raise HTTPException(status_code=409, detail="Username exists")
     user_id = str(uuid.uuid4())
-    data_limit = int(user.data_limit_gb * 1024**3)
+    data_limit = int(user.data_limit_mb * 1024**2)
     expire_at = int((datetime.now() + timedelta(days=user.expire_days)).timestamp()) if user.expire_days > 0 else 0
     keys = keygen.generate_keys(user_id)
     sub_url = keys.get("vless_main", keys.get("vless", ""))
@@ -270,7 +270,7 @@ def update_user(user_id: str, user: UserUpdate, admin=Depends(verify_token)):
     conn = get_db()
     updates = {}
     if user.status: updates["status"] = user.status
-    if user.data_limit_gb is not None: updates["data_limit"] = int(user.data_limit_gb * 1024**3)
+    if user.data_limit_mb is not None: updates["data_limit"] = int(user.data_limit_mb * 1024**2)
     if user.expire_days is not None: updates["expire_at"] = int((datetime.now() + timedelta(days=user.expire_days)).timestamp())
     if user.node_ids is not None: updates["node_ids"] = json.dumps(user.node_ids)
     if user.note is not None: updates["note"] = user.note
@@ -557,14 +557,14 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
     username = data.get("username", "").strip()
     telegram_id = str(data.get("telegram_id", ""))
     expire_days = int(data.get("expire_days", 30))
-    data_limit_gb = float(data.get("data_limit_gb", 0))
+    data_limit_mb = float(data.get("data_limit_mb", 0))
     
     if not username:
         raise HTTPException(status_code=400, detail="username required")
     
     user_id = str(uuid_lib.uuid4())
     expire_at = int(t.time()) + expire_days * 86400 if expire_days > 0 else 0
-    data_limit = int(data_limit_gb * 1073741824)
+    data_limit = int(data_limit_mb * 1024**2)
     
     keys = keygen.generate_keys(user_id)
     sub_url = keys.get("vless_main", "")

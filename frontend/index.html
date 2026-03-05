@@ -624,7 +624,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
         <div style="color:var(--muted);margin-bottom:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700">Использование API</div>
         <div style="color:var(--accent4)">POST /bot/users/create</div>
         <div style="color:var(--muted);margin:4px 0">Headers: X-Bot-Token: &lt;token&gt;</div>
-        <div style="color:var(--muted)">Body: {"username":"...", "expire_days":30, "data_limit_gb":10}</div>
+        <div style="color:var(--muted)">Body: {"username":"...", "expire_days":30, "data_limit_mb":10}</div>
       </div>
       <div class="table-card">
         <table>
@@ -748,7 +748,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="form-group"><label class="form-label">Telegram ID</label><input id="u-tgid" class="form-input" placeholder="123456789" type="number"></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Дней</label><input id="u-days" class="form-input" value="30" type="number"></div>
-        <div class="form-group"><label class="form-label">Лимит (GB, 0=∞)</label><input id="u-limit" class="form-input" value="0" type="number"></div>
+        <div class="form-group"><label class="form-label">Лимит (MB, 0=∞)</label><input id="u-limit" class="form-input" value="0" type="number"></div>
       </div>
       <div class="form-group"><label class="form-label">Заметка</label><input id="u-note" class="form-input" placeholder="Необязательно"></div>
     </div>
@@ -1011,7 +1011,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     </div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        Формат CSV: username, data_limit_gb, note<br>
+        Формат CSV: username, data_limit_mb, note<br>
         Пример: user1, 10, клиент
       </div>
       <input type="file" id="import-file" accept=".csv" class="form-input">
@@ -1468,7 +1468,7 @@ document.getElementById('btn-submit-user').onclick = function(){
     username: document.getElementById('u-username').value.trim(),
     telegram_id: document.getElementById('u-tgid').value.trim()||null,
     expire_days: parseInt(document.getElementById('u-days').value)||30,
-    data_limit_gb: parseFloat(document.getElementById('u-limit').value)||0,
+    data_limit_mb: parseFloat(document.getElementById('u-limit').value)||0,
     note: document.getElementById('u-note').value.trim(),
     node_ids: ['main']
   }).then(function(){
@@ -1727,13 +1727,13 @@ function loadTraffic() {
     if(data.users&&data.users.length){
       var html = '';
       data.users.forEach(function(u){
-        var pct = u.data_limit_gb>0 ? Math.min(100,Math.round(u.data_used_gb/u.data_limit_gb*100)) : 0;
+        var pct = u.data_limit_mb>0 ? Math.min(100,Math.round(u.data_used_gb/u.data_limit_mb*100)) : 0;
         var bc = pct>90?'red':pct>70?'yellow':'green';
         html += '<tr>';
         html += '<td><b>'+u.username+'</b></td>';
         html += '<td class="mono">'+u.data_used_mb+' MB</td>';
-        html += '<td class="mono">'+(u.data_limit_gb?u.data_limit_gb+' GB':'∞')+'</td>';
-        html += '<td style="min-width:120px">'+(u.data_limit_gb?'<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div><div style="font-size:11px;color:var(--muted)">'+pct+'%</div>':'—')+'</td>';
+        html += '<td class="mono">'+(u.data_limit?Math.round(u.data_limit/1024/1024)+' MB':'∞')+'</td>';
+        html += '<td style="min-width:120px">'+(u.data_limit_mb?'<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div><div style="font-size:11px;color:var(--muted)">'+pct+'%</div>':'—')+'</td>';
         html += '<td><span class="badge '+(u.status==='active'?'badge-green':u.status==='expired'?'badge-red':'badge-yellow')+'">'+u.status+'</span></td>';
         html += '<td class="mono">'+fmtDate(u.expire_at)+'</td>';
         html += '</tr>';
@@ -2061,7 +2061,7 @@ function createTemplate(){
   var days=parseInt(document.getElementById('t-days').value)||30;
   var limit=parseFloat(document.getElementById('t-limit').value)||0;
   if(!name){toast('❌ Введите название!');return;}
-  api('POST','/templates',{name:name,expire_days:days,data_limit_gb:limit}).then(function(){
+  api('POST','/templates',{name:name,expire_days:days,data_limit_mb:limit}).then(function(){
     loadTemplates();
     document.getElementById('t-name').value='';
     toast('✅ Шаблон создан!');
@@ -2077,7 +2077,7 @@ function useTemplate(id){
   var t=_templates&&_templates.find(function(x){return x.id===id;});
   if(!t) return;
   document.getElementById('u-days').value=t.expire_days;
-  document.getElementById('u-limit').value=t.data_limit_gb;
+  document.getElementById('u-limit').value=t.data_limit_mb;
   document.getElementById('u-note').value=t.note||'';
   closeModal('modal-templates');
   openModal('modal-add-user');
@@ -2120,7 +2120,7 @@ function createTemplate(){
   var days=parseInt(document.getElementById('t-days').value)||30;
   var limit=parseFloat(document.getElementById('t-limit').value)||0;
   if(!name){toast('❌ Введите название!');return;}
-  api('POST','/templates',{name:name,expire_days:days,data_limit_gb:limit}).then(function(){
+  api('POST','/templates',{name:name,expire_days:days,data_limit_mb:limit}).then(function(){
     loadTemplates();
     document.getElementById('t-name').value='';
     toast('✅ Шаблон создан!');
@@ -2136,7 +2136,7 @@ function useTemplate(id){
   var t=_templates&&_templates.find(function(x){return x.id===id;});
   if(!t) return;
   document.getElementById('u-days').value=t.expire_days;
-  document.getElementById('u-limit').value=t.data_limit_gb;
+  document.getElementById('u-limit').value=t.data_limit_mb;
   document.getElementById('u-note').value=t.note||'';
   closeModal('modal-templates');
   openModal('modal-add-user');

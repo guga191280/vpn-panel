@@ -105,7 +105,7 @@ fi
 header "5. БАЗА ДАННЫХ"
 ADMIN_TOKEN=$(openssl rand -hex 32)
 ADMIN_PASS_HASH=$(echo -n "$ADMIN_PASS" | sha256sum | cut -d' ' -f1)
-SERVER_DOMAIN=$SERVER_DOMAIN SERVER_IP=$SERVER_IP VLESS_UUID=$VLESS_UUID ADMIN_TOKEN=$ADMIN_TOKEN ADMIN_PASS_HASH=$ADMIN_PASS_HASH \
+SERVER_DOMAIN=$SERVER_DOMAIN SERVER_IP=$SERVER_IP VLESS_UUID=$VLESS_UUID ADMIN_TOKEN=$ADMIN_TOKEN ADMIN_PASS_HASH=$ADMIN_PASS_HASH PUBLIC_KEY=$PUBLIC_KEY SHORT_ID=$SHORT_ID \
 python3 << 'PYEOF'
 import sqlite3, time, os
 db='/opt/vpn_panel/backend/vpn_panel.db'; conn=sqlite3.connect(db)
@@ -129,12 +129,31 @@ now=int(time.time())
 d=os.environ.get('SERVER_DOMAIN','localhost'); ip=os.environ.get('SERVER_IP','127.0.0.1')
 uuid=os.environ.get('VLESS_UUID',''); token=os.environ.get('ADMIN_TOKEN',''); ph=os.environ.get('ADMIN_PASS_HASH','')
 conn.execute("INSERT OR IGNORE INTO admins (username,password_hash,token,created_at) VALUES (?,?,?,?)",('admin',ph,token,now))
-conn.execute("INSERT OR REPLACE INTO nodes (id,name,host,country,status,created_at) VALUES (?,?,?,?,?,?)",('main','Russia',ip,'Russia','online',now))
+conn.execute("INSERT OR REPLACE INTO nodes (id,name,host,port,api_port,api_token,country,protocols,status,traffic_used,created_at,ssh_user,ssh_password,public_key,short_id,panel_port,ssh_pass,uuid) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ('main','Russia',ip,22,8000,'','Russia','[\"vless\",\"hysteria2\"]','online',0,now,'root','',os.environ.get('PUBLIC_KEY',''),os.environ.get('SHORT_ID',''),8080,'',os.environ.get('VLESS_UUID','')))
 for k,v in [('panel_domain',d),('panel_port','8444'),('server_ip',ip),('vless_uuid',uuid),('tg_bot_token',''),('tg_admin_id',''),('tg_notify_user','1')]:
     conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)",(k,v))
 conn.commit(); conn.close(); print("БД инициализирована")
 PYEOF
 ok "База данных готова"
+
+# Добавляем hosts автоматически
+SERVER_IP=$SERVER_IP python3 << 'HOSTSEOF'
+import sqlite3, os
+ip = os.environ.get('SERVER_IP', '127.0.0.1')
+conn = sqlite3.connect('/opt/vpn_panel/backend/vpn_panel.db')
+cols = [r[1] for r in conn.execute("PRAGMA table_info(hosts)").fetchall()]
+if 'remark' not in cols:
+    conn.execute("ALTER TABLE hosts ADD COLUMN remark TEXT DEFAULT ''")
+conn.execute("DELETE FROM hosts")
+conn.execute("INSERT INTO hosts (inbound_tag,name,remark,address,port,sni,status) VALUES (?,?,?,?,?,?,?)",
+    ('vless-in','de VLESS','de VLESS',ip,4443,'www.microsoft.com',1))
+conn.execute("INSERT INTO hosts (inbound_tag,name,remark,address,port,sni,status) VALUES (?,?,?,?,?,?,?)",
+    ('hysteria2-in','de HY2','de HY2',ip,20897,ip,1))
+conn.commit(); conn.close()
+print("Hosts добавлены")
+HOSTSEOF
+
 python3 $PANEL_DIR/backend/sync_users.py >/dev/null 2>&1 || true
 ok "Нода настроена"
 

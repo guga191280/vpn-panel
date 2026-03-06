@@ -40,23 +40,6 @@ else
     sleep 3
 fi
 
-# Проверяем финскую ноду
-FIN_OK=$(sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-    root@fin243.alexanderoff.store "systemctl is-active sing-box" 2>/dev/null)
-if [ "$FIN_OK" = "active" ]; then
-    log "✅ Finland sing-box — работает"
-else
-    log "⚠️  Finland sing-box — не работает, перезапускаем..."
-    sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-        root@fin243.alexanderoff.store "systemctl restart sing-box" 2>/dev/null
-    sleep 3
-    FIN_OK2=$(sshpass -p 'alexander77' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-        root@fin243.alexanderoff.store "systemctl is-active sing-box" 2>/dev/null)
-    if [ "$FIN_OK2" = "active" ]; then
-        log "✅ Finland sing-box — перезапущен успешно"
-    else
-        log "❌ Finland sing-box — НЕ запустился!"
-    fi
 fi
 
 log "─────────────────────────────"

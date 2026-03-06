@@ -300,13 +300,24 @@ def delete_user(user_id: str, admin=Depends(verify_token)):
 def connections_count(admin=Depends(verify_token)):
     try:
         import requests as req
-        r = req.get("http://127.0.0.1:9090/connections", timeout=3)
-        if r.status_code == 200:
-            conns = r.json().get("connections", [])
-            # Уникальные IP = уникальные пользователи
-            ips = set(c.get("metadata",{}).get("sourceIP","") for c in conns)
-            ips.discard("")
-            return {"count": len(conns), "unique_users": len(ips)}
+        db = get_db()
+        nodes = db.execute("SELECT host FROM nodes WHERE status='online'").fetchall()
+        db.close()
+        total_conns = 0
+        all_ips = set()
+        for node in nodes:
+            host = node['host']
+            if host in ('185.40.4.169',): host = '127.0.0.1'
+            try:
+                r = req.get(f"http://{host}:9090/connections", timeout=3)
+                if r.status_code == 200:
+                    conns = r.json().get("connections", [])
+                    total_conns += len(conns)
+                    for c in conns:
+                        ip = c.get("metadata",{}).get("sourceIP","")
+                        if ip: all_ips.add(ip)
+            except: pass
+        return {"count": total_conns, "unique_users": len(all_ips)}
     except: pass
     return {"count": 0, "unique_users": 0}
 
@@ -1546,7 +1557,7 @@ def get_user_keys(user_id: str, admin=Depends(verify_token)):
         settings = {r["key"]:r["value"] for r in rows}
     except: pass
     domain = settings.get("panel_domain","").rstrip("/") or ""
-    sub_url = f"{domain}/sub/{sub_tok['sub_token']}" if sub_tok and sub_tok['sub_token'] else ""
+    sub_url = f"https://{domain}/sub/{sub_tok['sub_token']}" if sub_tok and sub_tok['sub_token'] else ""
     return {"keys": result, "sub_url": sub_url, "username": user["username"]}
 
 if __name__ == "__main__":

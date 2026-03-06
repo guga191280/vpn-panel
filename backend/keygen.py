@@ -9,9 +9,9 @@ def get_db():
 
 def generate_keys(uuid):
     conn = get_db()
-    hosts = conn.execute("SELECT * FROM hosts WHERE status=1").fetchall()
+    hosts = conn.execute("SELECT * FROM hosts WHERE active=1").fetchall()
     nodes = {n["id"]: dict(n) for n in conn.execute("SELECT * FROM nodes WHERE status='online'").fetchall()}
-    bridges = [dict(b) for b in conn.execute("SELECT * FROM bridges WHERE status=1").fetchall()]
+    bridges = [dict(b) for b in conn.execute("SELECT * FROM bridges WHERE active=1").fetchall()]
     conn.close()
 
     keys = {}

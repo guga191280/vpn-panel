@@ -226,7 +226,12 @@ def create_user(user: UserCreate, admin=Depends(verify_token)):
     data_limit = int(user.data_limit_mb * 1024**2)
     expire_at = int((datetime.now() + timedelta(days=user.expire_days)).timestamp()) if user.expire_days > 0 else 0
     keys = keygen.generate_keys(user_id)
-    sub_url = keys.get("vless_main", keys.get("vless", ""))
+    import secrets as _st
+    _sub_tok_new = _st.token_urlsafe(24)
+    _domain = get_db().execute("SELECT value FROM settings WHERE key='panel_domain'").fetchone()
+    _domain = _domain[0] if _domain else 'localhost'
+    sub_url = f"https://{_domain}/sub/{_sub_tok_new}"
+    sub_tok = _sub_tok_new
     hy2_url = keys.get("hy2_main", keys.get("hysteria2", ""))
     vless_ru75 = keys.get("vless_fin", keys.get("vless_ru75", ""))
     hy2_ru75 = keys.get("hy2_fin", keys.get("hy2_ru75", ""))
@@ -234,8 +239,6 @@ def create_user(user: UserCreate, admin=Depends(verify_token)):
     bridge_keys = {k:v for k,v in keys.items() if 'bridge' in k}
     vless_bridge = next((v for k,v in bridge_keys.items() if 'vless' in k), '')
     hy2_bridge = next((v for k,v in bridge_keys.items() if 'hy2' in k), '')
-    import secrets as _s
-    sub_tok = _s.token_urlsafe(24)
     conn.execute("""INSERT INTO users 
         (id,username,telegram_id,status,data_limit,expire_at,
          subscription_url,hysteria2_url,vless_ru75,hy2_ru75,

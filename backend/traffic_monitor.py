@@ -53,31 +53,34 @@ def collect_node(node_id, node):
         r = requests.get(f'http://{node["host"]}:{node["port"]}/connections',
             headers={'Authorization': f'Bearer {node["secret"]}'}, timeout=5)
         if r.status_code != 200: return {}
-        conns = r.json().get('connections', [])
-        result = {}
+        data = r.json()
+        conns = data.get('connections', [])
+        
+        # Используем накопленный трафик из totalDownload/totalUpload
+        total_up = data.get('uploadTotal', 0)
+        total_down = data.get('downloadTotal', 0)
+        
+        # Вычислим дельту от предыдущего значения
+        prev_total = _prev.get(f'__total_{node_id}__', {'up': total_up, 'down': total_down})
+        up_d = max(0, total_up - prev_total['up'])
+        dn_d = max(0, total_down - prev_total['down'])
+        _prev[f'__total_{node_id}__'] = {'up': total_up, 'down': total_down}
+        
+        # Определим протокол из активных соединений
+        protocol = 'hysteria2'
+        source_ip = ''
         for c in conns:
-            cid = c['id']
-            upload = c.get('upload', 0); download = c.get('download', 0)
             conn_type = c.get('metadata', {}).get('type', '')
-            if 'hysteria2' in conn_type: protocol = 'hysteria2'
-            elif 'vless' in conn_type: protocol = 'vless'
-            else: protocol = 'unknown'
-            source_ip = c.get('metadata', {}).get('sourceIP', '')
-            if cid in _prev:
-                prev = _prev[cid]
-                up_d = max(0, upload - prev['upload'])
-                dn_d = max(0, download - prev['download'])
-            else:
-                up_d = dn_d = 0
-            _prev[cid] = {'upload': upload, 'download': download}
-            log_connection(source_ip, protocol, node_id)
-            if up_d > 0 or dn_d > 0:
-                result[cid] = {'upload_delta': up_d, 'download_delta': dn_d,
-                               'protocol': protocol, 'source_ip': source_ip, 'node_id': node_id}
-        active_ids = {c['id'] for c in conns}
-        for k in list(_prev.keys()):
-            if k not in active_ids: del _prev[k]
-        return result
+            src = c.get('metadata', {}).get('sourceIP', '')
+            if src: source_ip = src
+            if 'vless' in conn_type: protocol = 'vless'
+            elif 'hysteria2' in conn_type: protocol = 'hysteria2'
+            if source_ip: log_connection(source_ip, protocol, node_id)
+        
+        if up_d > 0 or dn_d > 0:
+            return {'__main__': {'upload_delta': up_d, 'download_delta': dn_d,
+                                 'protocol': protocol, 'source_ip': source_ip, 'node_id': node_id}}
+        return {}
     except Exception as e:
         print(f"collect_node error [{node_id}]: {e}"); return {}
 def update_db(node_id, connections_data):

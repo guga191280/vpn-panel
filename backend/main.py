@@ -567,7 +567,7 @@ def verify_bot_token(x_bot_token: str = Header(None)):
 @app.post("/bot/users/create")
 def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
     """Создать пользователя и получить ключи"""
-    import uuid as uuid_lib, time as t, sys, json
+    import uuid as uuid_lib, time as t, sys, json, secrets as _sec
     sys.path.insert(0, "/opt/vpn_panel/backend")
     import keygen
     
@@ -583,8 +583,17 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
     expire_at = int(t.time()) + expire_days * 86400 if expire_days > 0 else 0
     data_limit = int(data_limit_mb * 1024**2)
     
+    # Генерируем sub_token
+    sub_token = _sec.token_urlsafe(24)
+    
+    # Получаем domain
+    _db = get_db()
+    _dom = _db.execute("SELECT value FROM settings WHERE key='panel_domain'").fetchone()
+    _db.close()
+    domain = _dom[0] if _dom else 'panel.alexanderoff.ru'
+    sub_url = f"https://{domain}/sub/{sub_token}"
+    
     keys = keygen.generate_keys(user_id)
-    sub_url = keys.get("vless_main", "")
     hy2_url = keys.get("hy2_main", "")
     
     conn = get_db()
@@ -592,13 +601,13 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
         conn.execute("""INSERT INTO users 
             (id,username,telegram_id,status,data_limit,expire_at,
              subscription_url,hysteria2_url,vless_ru75,hy2_ru75,
-             vless_main_bridge,hy2_main_bridge,node_ids,created_at,note)
-            VALUES (?,?,?,'active',?,?,?,?,?,?,?,?,?,?,?)""",
+             vless_main_bridge,hy2_main_bridge,node_ids,created_at,note,sub_token)
+            VALUES (?,?,?,'active',?,?,?,?,?,?,?,?,?,?,?,?)""",
             (user_id, username, telegram_id, data_limit, expire_at,
              sub_url, hy2_url,
              keys.get("vless_ru75",""), keys.get("hy2_ru75",""),
              keys.get("vless_main_bridge",""), keys.get("hy2_main_bridge",""),
-             json.dumps([]), int(t.time()), ""))
+             json.dumps([]), int(t.time()), "", sub_token))
         conn.commit()
     except Exception as e:
         conn.close()
@@ -613,8 +622,10 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
         "success": True,
         "user_id": user_id,
         "username": username,
+        "sub_token": sub_token,
+        "sub_url": sub_url,
         "keys": {
-            "vless_main": sub_url,
+            "vless_main": keys.get("vless_main",""),
             "hy2_main": hy2_url,
             "vless_ru75": keys.get("vless_ru75",""),
             "hy2_ru75": keys.get("hy2_ru75",""),
@@ -635,11 +646,23 @@ def bot_get_user(telegram_id: str, bot=Depends(verify_bot_token)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     u = dict(user)
+    sub_token = u.get("sub_token","")
+    sub_url = u.get("subscription_url","")
+    # Если sub_url не https - исправим
+    if sub_token and not sub_url.startswith("https://"):
+        import sqlite3 as _sq
+        _db2 = get_db()
+        _dom2 = _db2.execute("SELECT value FROM settings WHERE key='panel_domain'").fetchone()
+        _db2.close()
+        domain2 = _dom2[0] if _dom2 else 'panel.alexanderoff.ru'
+        sub_url = f"https://{domain2}/sub/{sub_token}"
     return {
         "success": True,
         "user_id": u["id"],
         "username": u["username"],
         "status": u["status"],
+        "sub_token": sub_token,
+        "sub_url": sub_url,
         "keys": {
             "vless_main": u.get("subscription_url",""),
             "hy2_main": u.get("hysteria2_url",""),

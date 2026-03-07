@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>happVIP</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0f0ff;
+    --text2: #8888aa;
+    --green: #00e676;
+    --blue: #2979ff;
+    --purple: #d500f9;
+    --pink: #ff4081;
+    --orange: #ff6d00;
+    --yellow: #ffd600;
+    --cyan: #00e5ff;
+    --r1: #ff4081;
+    --r2: #ff6d00;
+    --r3: #ffd600;
+    --r4: #00e676;
+    --r5: #00e5ff;
+    --r6: #2979ff;
+    --r7: #d500f9;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ANIMATED BACKGROUND */
+  .bg-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    animation: float 8s ease-in-out infinite;
+  }
+  .orb1 { width: 300px; height: 300px; background: var(--purple); top: -100px; left: -100px; animation-delay: 0s; }
+  .orb2 { width: 250px; height: 250px; background: var(--blue); top: 30%; right: -80px; animation-delay: 2s; }
+  .orb3 { width: 200px; height: 200px; background: var(--pink); bottom: 20%; left: 10%; animation-delay: 4s; }
+  .orb4 { width: 180px; height: 180px; background: var(--cyan); bottom: -50px; right: 20%; animation-delay: 1s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+  }
+
+  /* GRID PATTERN */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    padding: 24px 0 20px;
+    animation: slideDown 0.6s ease;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 30px rgba(41,121,255,0.4);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 30px rgba(41,121,255,0.4); }
+    50% { box-shadow: 0 0 50px rgba(213,0,249,0.5); }
+  }
+  .logo-text {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--blue), var(--purple), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+  .tagline {
+    font-size: 13px;
+    color: var(--text2);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+  }
+
+  /* RAINBOW DIVIDER */
+  .rainbow-line {
+    height: 2px;
+    background: linear-gradient(90deg, var(--r1), var(--r2), var(--r3), var(--r4), var(--r5), var(--r6), var(--r7));
+    border-radius: 2px;
+    margin: 16px 0;
+    animation: shimmer 3s linear infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes shimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* WELCOME CARD */
+  .welcome-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 16px;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+  .welcome-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  .features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--text2);
+  }
+  .feature-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin: 20px 0 10px;
+    animation: fadeUp 0.5s ease 0.2s both;
+  }
+
+  /* PLAN CARDS */
+  .plans {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.5s ease 0.3s both;
+  }
+
+  .plan-card {
+    border-radius: 18px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .plan-card:active { transform: scale(0.97); }
+
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 19px;
+    padding: 1px;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: 0;
+  }
+
+  /* FREE PLAN — teal/green */
+  .plan-free {
+    background: linear-gradient(135deg, rgba(0,230,118,0.08), rgba(0,229,255,0.05));
+    border: 1px solid rgba(0,230,118,0.25);
+  }
+  .plan-free::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(0,230,118,0.15), transparent 70%);
+    border-radius: 50%;
+  }
+  .plan-free:hover { box-shadow: 0 0 25px rgba(0,230,118,0.2); }
+
+  /* PAID PLAN — blue/purple */
+  .plan-paid {
+    background: linear-gradient(135deg, rgba(41,121,255,0.1), rgba(213,0,249,0.08));
+    border: 1px solid rgba(41,121,255,0.3);
+  }
+  .plan-paid::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle, rgba(213,0,249,0.12), transparent 70%);
+    border-radius: 50%;
+  }
+  .plan-paid:hover { box-shadow: 0 0 25px rgba(41,121,255,0.25); }
+
+  .plan-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .plan-left { display: flex; align-items: center; gap: 12px; }
+  .plan-emoji {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .plan-emoji-free { background: rgba(0,230,118,0.15); }
+  .plan-emoji-paid { background: rgba(41,121,255,0.15); }
+
+  .plan-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .plan-desc {
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .plan-price {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .price-amount {
+    font-size: 18px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    justify-content: flex-end;
+  }
+  .price-free { color: var(--green); }
+  .price-stars { color: #ffd600; }
+  .price-label {
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 1px;
+  }
+
+  /* MENU BUTTONS */
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    animation: fadeUp 0.5s ease 0.4s both;
+  }
+  .menu-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .menu-btn:active { transform: scale(0.96); }
+  .menu-btn-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .menu-btn-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .btn-connect .menu-btn-icon { background: rgba(0,229,255,0.12); }
+  .btn-connect:hover { border-color: rgba(0,229,255,0.3); box-shadow: 0 0 20px rgba(0,229,255,0.1); }
+
+  .btn-myvpn .menu-btn-icon { background: rgba(255,64,129,0.12); }
+  .btn-myvpn:hover { border-color: rgba(255,64,129,0.3); box-shadow: 0 0 20px rgba(255,64,129,0.1); }
+
+  .btn-support {
+    grid-column: span 2;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .btn-support .menu-btn-icon { background: rgba(255,109,0,0.12); flex-shrink: 0; }
+  .btn-support:hover { border-color: rgba(255,109,0,0.3); box-shadow: 0 0 20px rgba(255,109,0,0.1); }
+
+  /* SCREENS */
+  .screen { display: none; animation: fadeUp 0.3s ease; }
+  .screen.active { display: block; }
+
+  /* BACK BUTTON */
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 16px;
+    width: fit-content;
+    transition: all 0.2s;
+  }
+  .back-btn:active { transform: scale(0.96); }
+
+  /* VPN INFO CARD */
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--text2); display: flex; align-items: center; gap: 8px; }
+  .info-value { font-weight: 600; color: var(--text); }
+  .status-online { color: var(--green); display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* KEY BLOCK */
+  .key-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .key-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .key-proto {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .key-flag { font-size: 18px; }
+  .copy-btn {
+    background: rgba(41,121,255,0.15);
+    border: 1px solid rgba(41,121,255,0.3);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Outfit', sans-serif;
+  }
+  .copy-btn:active { transform: scale(0.94); background: rgba(41,121,255,0.3); }
+  .copy-btn.copied { color: var(--green); border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1); }
+  .key-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    word-break: break-all;
+    line-height: 1.5;
+    background: rgba(0,0,0,0.3);
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+
+  /* SUB LINK */
+  .sub-block {
+    background: var(--surface2);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .sub-title {
+    font-size: 12px;
+    color: var(--cyan);
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sub-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  /* APPS LIST */
+  .apps-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .app-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .app-item:active { transform: scale(0.97); }
+  .app-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .app-info { flex: 1; }
+  .app-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .app-platforms { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .app-arrow { color: var(--text2); font-size: 16px; }
+  .app-links { display: flex; gap: 6px; }
+  .app-link {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .link-android { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+  .link-ios { background: rgba(0,229,255,0.1); color: var(--cyan); border: 1px solid rgba(0,229,255,0.2); }
+  .link-pc { background: rgba(41,121,255,0.1); color: var(--blue); border: 1px solid rgba(41,121,255,0.2); }
+
+  .platform-divider {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 12px 0 6px;
+  }
+
+  /* BIG ACTION BUTTON */
+  .action-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+    letter-spacing: 0.3px;
+  }
+  .action-btn:active { transform: scale(0.97); }
+  .btn-buy {
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: white;
+    box-shadow: 0 8px 30px rgba(41,121,255,0.35);
+  }
+  .btn-buy:hover { box-shadow: 0 8px 40px rgba(41,121,255,0.5); }
+  .btn-free {
+    background: linear-gradient(135deg, #00c853, #00e676);
+    color: #001a0a;
+    box-shadow: 0 8px 30px rgba(0,230,118,0.3);
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,230,118,0.9);
+    color: #001a0a;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ANIMATIONS */
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* STARS BADGE */
+  .stars-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,214,0,0.1);
+    border: 1px solid rgba(255,214,0,0.25);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--yellow);
+  }
+
+  .no-vpn-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+  }
+  .no-vpn-icon { font-size: 48px; margin-bottom: 12px; }
+  .no-vpn-text { font-size: 15px; margin-bottom: 6px; color: var(--text); font-weight: 600; }
+  .no-vpn-sub { font-size: 13px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<div class="container">
+
+  <!-- ═══ MAIN SCREEN ═══ -->
+  <div id="screen-main" class="screen active">
+
+    <div class="header">
+      <div class="logo">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+CiAgPGRlZnM+CiAgICA8IS0tIE91dGVyIGdsb3cgZmlsdGVyIC0tPgogICAgPGZpbHRlciBpZD0ib3V0ZXJHbG93IiB4PSItNTAlIiB5PSItNTAlIiB3aWR0aD0iMjAwJSIgaGVpZ2h0PSIyMDAlIj4KICAgICAgPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iOCIgcmVzdWx0PSJibHVyIi8+CiAgICAgIDxmZUNvbXBvc2l0ZSBpbj0iU291cmNlR3JhcGhpYyIgaW4yPSJibHVyIiBvcGVyYXRvcj0ib3ZlciIvPgogICAgPC9maWx0ZXI+CiAgICA8IS0tIFN0cm9uZyBnbG93IC0tPgogICAgPGZpbHRlciBpZD0ic3Ryb25nR2xvdyIgeD0iLTgwJSIgeT0iLTgwJSIgd2lkdGg9IjI2MCUiIGhlaWdodD0iMjYwJSI+CiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEyIiByZXN1bHQ9ImJsdXIxIi8+CiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjYiIHJlc3VsdD0iYmx1cjIiLz4KICAgICAgPGZlTWVyZ2U+PGZlTWVyZ2VOb2RlIGluPSJibHVyMSIvPjxmZU1lcmdlTm9kZSBpbj0iYmx1cjIiLz48ZmVNZXJnZU5vZGUgaW49IlNvdXJjZUdyYXBoaWMiLz48L2ZlTWVyZ2U+CiAgICA8L2ZpbHRlcj4KICAgIDwhLS0gSW5uZXIgZ2xvdyBmb3IgSCAtLT4KICAgIDxmaWx0ZXIgaWQ9ImhHbG93IiB4PSItMzAlIiB5PSItMzAlIiB3aWR0aD0iMTYwJSIgaGVpZ2h0PSIxNjAlIj4KICAgICAgPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iNCIgcmVzdWx0PSJibHVyIi8+CiAgICAgIDxmZU1lcmdlPjxmZU1lcmdlTm9kZSBpbj0iYmx1ciIvPjxmZU1lcmdlTm9kZSBpbj0iU291cmNlR3JhcGhpYyIvPjwvZmVNZXJnZT4KICAgIDwvZmlsdGVyPgoKICAgIDwhLS0gQmFja2dyb3VuZCBncmFkaWVudCAtLT4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iYmdHcmFkIiBjeD0iNTAlIiBjeT0iNDAlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMGQyYTRhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNjAlIiBzdG9wLWNvbG9yPSIjMDUwZjFlIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzAyMDgxMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KCiAgICA8IS0tIEggZ3JhZGllbnQgLS0+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImhHcmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZmZmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjMwJSIgc3RvcC1jb2xvcj0iI2M4ZThmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjYwJSIgc3RvcC1jb2xvcj0iIzdhYjhmNSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0MDkwZDAiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPCEtLSBOZW9uIHJpbmcgZ3JhZGllbnQgLS0+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InJpbmdHcmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzAwYWFmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjI1JSIgc3RvcC1jb2xvcj0iIzAwY2NmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjUwJSIgc3RvcC1jb2xvcj0iIzAwODhlZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ijc1JSIgc3RvcC1jb2xvcj0iIzAwZGRmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDY2Y2MiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPCEtLSBDbGlwIGZvciByb3VuZGVkIHJlY3QgLS0+CiAgICA8Y2xpcFBhdGggaWQ9InJvdW5kQ2xpcCI+CiAgICAgIDxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxODAiIHJ4PSIzOCIgcnk9IjM4Ii8+CiAgICA8L2NsaXBQYXRoPgoKICAgIDwhLS0gRGlhZ29uYWwgbGluZXMgcGF0dGVybiBmb3IgSCAtLT4KICAgIDxwYXR0ZXJuIGlkPSJkaWFnIiB4PSIwIiB5PSIwIiB3aWR0aD0iMTQiIGhlaWdodD0iMTQiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSgtNDUpIj4KICAgICAgPGxpbmUgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjE0IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4yNSkiIHN0cm9rZS13aWR0aD0iNCIvPgogICAgPC9wYXR0ZXJuPgogIDwvZGVmcz4KCiAgPCEtLSBCYWNrZ3JvdW5kIHJvdW5kZWQgcmVjdCAtLT4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzgiIHJ5PSIzOCIgZmlsbD0idXJsKCNiZ0dyYWQpIi8+CgogIDwhLS0gQmx1ZSBhdG1vc3BoZXJlIGlubmVyIGdsb3cgLS0+CiAgPHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjM4IiByeT0iMzgiCiAgICAgICAgZmlsbD0ibm9uZSIKICAgICAgICBzdHJva2U9IiMwMDMzNjYiCiAgICAgICAgc3Ryb2tlLXdpZHRoPSIzMCIKICAgICAgICBvcGFjaXR5PSIwLjUiCiAgICAgICAgZmlsdGVyPSJ1cmwoI291dGVyR2xvdykiLz4KCiAgPCEtLSBOZW9uIG91dGVyIGJvcmRlciBnbG93IChibHVycmVkLCB3aWRlKSAtLT4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzgiIHJ5PSIzOCIKICAgICAgICBmaWxsPSJub25lIgogICAgICAgIHN0cm9rZT0iIzAwYmJmZiIKICAgICAgICBzdHJva2Utd2lkdGg9IjYiCiAgICAgICAgb3BhY2l0eT0iMC40IgogICAgICAgIGZpbHRlcj0idXJsKCNzdHJvbmdHbG93KSIvPgoKICA8IS0tIE5lb24gYm9yZGVyIChjcmlzcCkgLS0+CiAgPHJlY3QgeD0iMTIiIHk9IjEyIiB3aWR0aD0iMTc2IiBoZWlnaHQ9IjE3NiIgcng9IjM2IiByeT0iMzYiCiAgICAgICAgZmlsbD0ibm9uZSIKICAgICAgICBzdHJva2U9InVybCgjcmluZ0dyYWQpIgogICAgICAgIHN0cm9rZS13aWR0aD0iMyIKICAgICAgICBvcGFjaXR5PSIwLjk1Ii8+CgogIDwhLS0gRXh0cmEgYnJpZ2h0IHRvcCBhcmMgaGlnaGxpZ2h0IC0tPgogIDxwYXRoIGQ9Ik0gNTAgMTIgUSAxMDAgOCAxNTAgMTIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzg4ZGRmZiIgc3Ryb2tlLXdpZHRoPSIyIiBvcGFjaXR5PSIwLjgiLz4KCiAgPCEtLSBIIExFVFRFUiDigJQgc29saWQgd2hpdGUvYmx1ZSB3aXRoIGRpYWdvbmFsIHNsaWNlcyAtLT4KICA8ZyBjbGlwLXBhdGg9InVybCgjcm91bmRDbGlwKSI+CgogICAgPCEtLSBIIGJhc2Ugc2hhcGUgLS0+CiAgICA8ZyBmaWx0ZXI9InVybCgjaEdsb3cpIj4KICAgICAgPCEtLSBMZWZ0IHZlcnRpY2FsIGJhciAtLT4KICAgICAgPHJlY3QgeD0iNDIiIHk9IjQ2IiB3aWR0aD0iMzIiIGhlaWdodD0iMTA4IiByeD0iNCIgZmlsbD0idXJsKCNoR3JhZCkiLz4KICAgICAgPCEtLSBSaWdodCB2ZXJ0aWNhbCBiYXIgLS0+CiAgICAgIDxyZWN0IHg9IjEyNiIgeT0iNDYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIxMDgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2hHcmFkKSIvPgogICAgICA8IS0tIENyb3NzYmFyIC0tPgogICAgICA8cmVjdCB4PSI0MiIgeT0iODgiIHdpZHRoPSIxMTYiIGhlaWdodD0iMjQiIHJ4PSI0IiBmaWxsPSJ1cmwoI2hHcmFkKSIvPgoKICAgICAgPCEtLSBEaWFnb25hbCBzbGljZSBvdmVybGF5cyAoZGFya2VyIGN1dHMgbGlrZSB0aGUgbG9nbykgLS0+CiAgICAgIDwhLS0gU2xpY2UgMSDigJQgbGVmdCBiYXIgdG9wIC0tPgogICAgICA8cG9seWdvbiBwb2ludHM9IjQyLDU2IDc0LDU2IDU2LDgwIDQyLDgwIiBmaWxsPSJyZ2JhKDUsMjAsNDAsMC42KSIvPgogICAgICA8IS0tIFNsaWNlIDIg4oCUIGxlZnQgYmFyIG1pZCAtLT4KICAgICAgPHBvbHlnb24gcG9pbnRzPSI0Miw5NiA3NCw5NiA1NiwxMjAgNDIsMTIwIiBmaWxsPSJyZ2JhKDUsMjAsNDAsMC42KSIvPgogICAgICA8IS0tIFNsaWNlIDMg4oCUIHJpZ2h0IGJhciB0b3AgLS0+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTI2LDU2IDE1OCw1NiAxNDAsODAgMTI2LDgwIiBmaWxsPSJyZ2JhKDUsMjAsNDAsMC42KSIvPgogICAgICA8IS0tIFNsaWNlIDQg4oCUIHJpZ2h0IGJhciBtaWQgLS0+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTI2LDk2IDE1OCw5NiAxNDAsMTIwIDEyNiwxMjAiIGZpbGw9InJnYmEoNSwyMCw0MCwwLjYpIi8+CiAgICAgIDwhLS0gQ3Jvc3NiYXIgc2xpY2UgLS0+CiAgICAgIDxwb2x5Z29uIHBvaW50cz0iNjgsODggMTAwLDg4IDg0LDExMiA1MiwxMTIiIGZpbGw9InJnYmEoNSwyMCw0MCwwLjQ1KSIvPgogICAgICA8cG9seWdvbiBwb2ludHM9IjEwMCw4OCAxMzAsODggMTE0LDExMiA4MiwxMTIiIGZpbGw9InJnYmEoNSwyMCw0MCwwLjM1KSIvPgogICAgPC9nPgoKICAgIDwhLS0gRGlhZ29uYWwgbGluZXMgdGV4dHVyZSBvdmVyIEggLS0+CiAgICA8ZyBvcGFjaXR5PSIwLjMiPgogICAgICA8cmVjdCB4PSI0MiIgeT0iNDYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIxMDgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2RpYWcpIi8+CiAgICAgIDxyZWN0IHg9IjEyNiIgeT0iNDYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIxMDgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2RpYWcpIi8+CiAgICAgIDxyZWN0IHg9IjQyIiB5PSI4OCIgd2lkdGg9IjExNiIgaGVpZ2h0PSIyNCIgcng9IjQiIGZpbGw9InVybCgjZGlhZykiLz4KICAgIDwvZz4KCiAgICA8IS0tIEVkZ2UgaGlnaGxpZ2h0IG9uIEggKHRvcCByaW0gZ2xvdykgLS0+CiAgICA8cmVjdCB4PSI0MiIgeT0iNDYiIHdpZHRoPSIzMiIgaGVpZ2h0PSI0IiByeD0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIi8+CiAgICA8cmVjdCB4PSIxMjYiIHk9IjQ2IiB3aWR0aD0iMzIiIGhlaWdodD0iNCIgcng9IjIiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC45KSIvPgogICAgPHJlY3QgeD0iNDIiIHk9Ijg4IiB3aWR0aD0iMTE2IiBoZWlnaHQ9IjMiIHJ4PSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuNykiLz4KICA8L2c+CgogIDwhLS0gTmVvbiBib3R0b20gZ2xvdyByZWZsZWN0aW9uIC0tPgogIDxlbGxpcHNlIGN4PSIxMDAiIGN5PSIxODUiIHJ4PSI1NSIgcnk9IjgiIGZpbGw9IiMwMDg4ZmYiIG9wYWNpdHk9IjAuMjUiIGZpbHRlcj0idXJsKCNvdXRlckdsb3cpIi8+CgogIDwhLS0gQ29ybmVyIHNwYXJrbGVzIC0tPgogIDxjaXJjbGUgY3g9IjIyIiBjeT0iMjIiIHI9IjIiIGZpbGw9IiMwMGNjZmYiIG9wYWNpdHk9IjAuNiIvPgogIDxjaXJjbGUgY3g9IjE3OCIgY3k9IjIyIiByPSIyIiBmaWxsPSIjMDBjY2ZmIiBvcGFjaXR5PSIwLjYiLz4KICA8Y2lyY2xlIGN4PSIyMiIgY3k9IjE3OCIgcj0iMS41IiBmaWxsPSIjMDA4OGZmIiBvcGFjaXR5PSIwLjQiLz4KICA8Y2lyY2xlIGN4PSIxNzgiIGN5PSIxNzgiIHI9IjEuNSIgZmlsbD0iIzAwODhmZiIgb3BhY2l0eT0iMC40Ii8+Cjwvc3ZnPgo=" style="width:54px;height:54px;border-radius:14px;box-shadow:0 0 30px rgba(0,170,255,0.5);">
+        <div class="logo-text">happVIP</div>
+      </div>
+      <div class="tagline">Premium VPN Service · Telegram Stars</div>
+    </div>
+
+    <div class="rainbow-line"></div>
+
+    <div class="welcome-card">
+      <div class="welcome-title">🚀 Что вас ждёт:</div>
+      <div class="features">
+        <div class="feature-item">
+          <div class="feature-dot" style="background:var(--r1)"></div>
+          №1 по скорости в России
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot" style="background:var(--r2)"></div>
+          Обходит все глушилки
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot" style="background:var(--r3)"></div>
+          Комфортная связь для вашего бизнеса
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot" style="background:var(--r4)"></div>
+          Работает на всех устройствах
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot" style="background:var(--r5)"></div>
+          Оплата только через ⭐ Telegram Stars
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Выберите тариф</div>
+
+    <div class="plans">
+      <!-- FREE -->
+      <div class="plan-card plan-free" onclick="goScreen('screen-trial')">
+        <div class="plan-inner">
+          <div class="plan-left">
+            <div class="plan-emoji plan-emoji-free">🎁</div>
+            <div>
+              <div class="plan-name">Бесплатный тест</div>
+              <div class="plan-desc">100 МБ · без ограничений по сроку</div>
+            </div>
+          </div>
+          <div class="plan-price">
+            <div class="price-amount price-free">FREE</div>
+            <div class="price-label">навсегда</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAID -->
+      <div class="plan-card plan-paid" onclick="goScreen('screen-buy')">
+        <div class="plan-inner">
+          <div class="plan-left">
+            <div class="plan-emoji plan-emoji-paid">🚀</div>
+            <div>
+              <div class="plan-name">1 месяц</div>
+              <div class="plan-desc">200 ГБ · 30 дней · VLESS + Hysteria2</div>
+            </div>
+          </div>
+          <div class="plan-price">
+            <div class="price-amount price-stars">⭐ 1</div>
+            <div class="price-label">Telegram Star</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:24px">Меню</div>
+
+    <div class="menu-grid">
+      <div class="menu-btn btn-connect" onclick="goScreen('screen-howto')">
+        <div class="menu-btn-icon">📱</div>
+        <div class="menu-btn-label">Как подключиться</div>
+      </div>
+      <div class="menu-btn btn-myvpn" onclick="goScreen('screen-myvpn')">
+        <div class="menu-btn-icon">🔑</div>
+        <div class="menu-btn-label">Мой VPN</div>
+      </div>
+      <div class="menu-btn btn-support" onclick="openSupport()">
+        <div class="menu-btn-icon">ℹ️</div>
+        <div class="menu-btn-label">Поддержка · @vpnruss2</div>
+      </div>
+    </div>
+
+  </div><!-- /screen-main -->
+
+  <!-- ═══ FREE TRIAL SCREEN ═══ -->
+  <div id="screen-trial" class="screen">
+    <div class="back-btn" onclick="goScreen('screen-main')">← Назад</div>
+
+    <div class="info-card">
+      <div style="font-size:32px; margin-bottom:12px">🎁</div>
+      <div style="font-size:18px; font-weight:700; margin-bottom:6px">Бесплатный тест</div>
+      <div style="font-size:13px; color:var(--text2); margin-bottom:16px">Попробуйте VPN без оплаты</div>
+      <div class="info-row">
+        <span class="info-label">📦 Трафик</span>
+        <span class="info-value" style="color:var(--green)">100 МБ</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">📅 Срок</span>
+        <span class="info-value">Без ограничений</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">🌍 Серверы</span>
+        <span class="info-value">🇷🇺 · 🇩🇪 · 🇫🇮</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">⚡ Протоколы</span>
+        <span class="info-value">VLESS Reality + Hysteria2</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">💳 Цена</span>
+        <span class="info-value" style="color:var(--green)">Бесплатно</span>
+      </div>
+    </div>
+
+    <button class="action-btn btn-free" onclick="activateTrial()">🎁 Активировать бесплатно</button>
+  </div>
+
+  <!-- ═══ BUY SCREEN ═══ -->
+  <div id="screen-buy" class="screen">
+    <div class="back-btn" onclick="goScreen('screen-main')">← Назад</div>
+
+    <div class="info-card">
+      <div style="font-size:32px; margin-bottom:12px">🚀</div>
+      <div style="font-size:18px; font-weight:700; margin-bottom:6px">Тариф: 1 месяц</div>
+      <div class="info-row">
+        <span class="info-label">📦 Трафик</span>
+        <span class="info-value">200 ГБ</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">📅 Срок</span>
+        <span class="info-value">30 дней</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">🌍 Серверы</span>
+        <span class="info-value">🇷🇺 · 🇩🇪 · 🇫🇮</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">⚡ Протоколы</span>
+        <span class="info-value">VLESS Reality + Hysteria2</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">📱 Платформы</span>
+        <span class="info-value">iOS · Android · PC · Mac</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">💳 Цена</span>
+        <div class="stars-badge">⭐ 1 Telegram Star</div>
+      </div>
+    </div>
+
+    <button class="action-btn btn-buy" onclick="buyVPN()">⭐ Оплатить 1 Star</button>
+  </div>
+
+  <!-- ═══ MY VPN SCREEN ═══ -->
+  <div id="screen-myvpn" class="screen">
+    <div class="back-btn" onclick="goScreen('screen-main')">← Назад</div>
+    <div id="myvpn-content">
+      <div class="loading">
+        <div class="spinner"></div>
+        Загрузка данных...
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HOW TO CONNECT SCREEN ═══ -->
+  <div id="screen-howto" class="screen">
+    <div class="back-btn" onclick="goScreen('screen-main')">← Назад</div>
+
+    <div class="info-card" style="margin-bottom:16px">
+      <div style="font-size:15px; font-weight:700; margin-bottom:4px">📱 Как подключиться</div>
+      <div style="font-size:13px; color:var(--text2)">Установите приложение, вставьте ключ — готово!</div>
+    </div>
+
+    <div class="platform-divider">📱 Android и iPhone</div>
+    <div class="apps-grid">
+
+      <a class="app-item" href="#" onclick="openLinks('https://play.google.com/store/apps/details?id=com.happvpn.app','https://apps.apple.com/app/happ-proxy-utility/id6504287215')">
+        <div class="app-icon" style="background:rgba(0,230,118,0.12)">🟢</div>
+        <div class="app-info">
+          <div class="app-name">Happ VPN</div>
+          <div class="app-platforms">Android · iOS</div>
+        </div>
+        <div class="app-links">
+          <span class="app-link link-android">Android</span>
+          <span class="app-link link-ios">iOS</span>
+        </div>
+      </a>
+
+      <a class="app-item" href="#" onclick="openLinks('https://play.google.com/store/apps/details?id=app.hiddify.com','https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532')">
+        <div class="app-icon" style="background:rgba(0,229,255,0.12)">🔵</div>
+        <div class="app-info">
+          <div class="app-name">Hiddify</div>
+          <div class="app-platforms">Android · iOS</div>
+        </div>
+        <div class="app-links">
+          <span class="app-link link-android">Android</span>
+          <span class="app-link link-ios">iOS</span>
+        </div>
+      </a>
+
+      <a class="app-item" href="#" onclick="openLinks('https://play.google.com/store/apps/details?id=com.v2tun.android','https://apps.apple.com/app/v2tun/id6476628951')">
+        <div class="app-icon" style="background:rgba(213,0,249,0.12)">🟣</div>
+        <div class="app-info">
+          <div class="app-name">v2Tun</div>
+          <div class="app-platforms">Android · iOS</div>
+        </div>
+        <div class="app-links">
+          <span class="app-link link-android">Android</span>
+          <span class="app-link link-ios">iOS</span>
+        </div>
+      </a>
+
+      <a class="app-item" href="#" onclick="openLinks('https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box','https://apps.apple.com/app/v2box-v2ray-client/id6446814690')">
+        <div class="app-icon" style="background:rgba(255,214,0,0.12)">🟡</div>
+        <div class="app-info">
+          <div class="app-name">v2Box</div>
+          <div class="app-platforms">Android · iOS</div>
+        </div>
+        <div class="app-links">
+          <span class="app-link link-android">Android</span>
+          <span class="app-link link-ios">iOS</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="platform-divider">💻 Windows / macOS / Linux</div>
+    <div class="apps-grid">
+      <a class="app-item" href="https://github.com/hiddify/hiddify-next/releases" target="_blank">
+        <div class="app-icon" style="background:rgba(41,121,255,0.12)">🖥️</div>
+        <div class="app-info">
+          <div class="app-name">Hiddify Next</div>
+          <div class="app-platforms">Windows · macOS · Linux</div>
+        </div>
+        <div class="app-links"><span class="app-link link-pc">Скачать</span></div>
+      </a>
+      <a class="app-item" href="https://github.com/2dust/v2rayN/releases" target="_blank">
+        <div class="app-icon" style="background:rgba(255,109,0,0.12)">🖥️</div>
+        <div class="app-info">
+          <div class="app-name">v2rayN</div>
+          <div class="app-platforms">Windows</div>
+        </div>
+        <div class="app-links"><span class="app-link link-pc">Скачать</span></div>
+      </a>
+    </div>
+
+    <div style="margin-top:20px; padding:14px; background:var(--surface); border-radius:14px; border:1px solid var(--border); font-size:13px; color:var(--text2); line-height:1.6;">
+      <div style="font-weight:600; color:var(--text); margin-bottom:6px">Шаги подключения:</div>
+      1️⃣ Установите приложение<br>
+      2️⃣ Нажмите <b style="color:var(--text)">🔑 Мой VPN</b> — скопируйте ключ<br>
+      3️⃣ Вставьте ключ в приложение или используйте ссылку-подписку
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0a0a0f');
+  tg.setBackgroundColor('#0a0a0f');
+}
+
+const BOT_API = 'https://panel.alexanderoff.ru';
+const API_TOKEN = '5c58fb006cee1476fa7e4d27d97c79e8c177bf271fe89665da2a4016d07b1eff';
+const tgUserId = tg?.initDataUnsafe?.user?.id || null;
+
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'screen-myvpn') loadMyVPN();
+  window.scrollTo(0, 0);
+}
+
+function showToast(msg, color = '#00e676') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color + 'ee';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Скопировано';
+    btn.classList.add('copied');
+    showToast('✓ Скопировано!');
+    setTimeout(() => { btn.textContent = 'Копировать'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function openSupport() {
+  tg?.openTelegramLink('https://t.me/vpnruss2');
+}
+
+function openLinks(android, ios) {
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) {
+    tg?.openLink(ios);
+  } else {
+    tg?.openLink(android);
+  }
+  return false;
+}
+
+async function activateTrial() {
+  if (!tgUserId) {
+    showToast('⚠️ Откройте через Telegram бота', 'rgba(255,100,0,0.9)');
+    return;
+  }
+  const btn = event.target;
+  btn.textContent = '⏳ Создаём аккаунт...';
+  btn.disabled = true;
+
+  try {
+    // Send action to bot via sendData
+    tg.sendData(JSON.stringify({ action: 'trial', user_id: tgUserId }));
+  } catch(e) {
+    btn.textContent = '🎁 Активировать бесплатно';
+    btn.disabled = false;
+    showToast('Откройте через кнопку бота', 'rgba(255,100,0,0.9)');
+  }
+}
+
+function buyVPN() {
+  if (!tgUserId) {
+    showToast('⚠️ Откройте через Telegram бота', 'rgba(255,100,0,0.9)');
+    return;
+  }
+  try {
+    tg.sendData(JSON.stringify({ action: 'buy_month', user_id: tgUserId }));
+  } catch(e) {
+    showToast('Откройте через кнопку бота', 'rgba(255,100,0,0.9)');
+  }
+}
+
+async function loadMyVPN() {
+  const container = document.getElementById('myvpn-content');
+  if (!tgUserId) {
+    container.innerHTML = `<div class="no-vpn-state"><div class="no-vpn-icon">🔒</div><div class="no-vpn-text">Откройте через бота</div><div class="no-vpn-sub">Нажмите кнопку 🔑 Мой VPN в боте</div></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="loading"><div class="spinner"></div>Загрузка...</div>`;
+
+  try {
+    const resp = await fetch(`${BOT_API}/api/users`, {
+      headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+    });
+    const users = await resp.json();
+    const user = users.find(u => String(u.telegram_id) === String(tgUserId) || u.username === `tg_${tgUserId}`);
+
+    if (!user) {
+      container.innerHTML = `
+        <div class="no-vpn-state">
+          <div class="no-vpn-icon">😔</div>
+          <div class="no-vpn-text">VPN не найден</div>
+          <div class="no-vpn-sub">Купите тариф или активируйте бесплатный тест</div>
+        </div>
+        <button class="action-btn btn-buy" onclick="goScreen('screen-buy')" style="margin-top:16px">🚀 Купить VPN</button>
+        <button class="action-btn btn-free" onclick="goScreen('screen-trial')" style="margin-top:10px">🎁 Бесплатный тест</button>`;
+      return;
+    }
+
+    // Load keys
+    const keysResp = await fetch(`${BOT_API}/api/users/${user.id}/keys`, {
+      headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+    });
+    const keys = await keysResp.json();
+
+    const status = user.status || 'unknown';
+    const expiry = user.expiry_date;
+    const trafficUsed = user.traffic_used || 0;
+    const trafficLimit = user.traffic_limit || 0;
+    const usedMb = (trafficUsed / (1024*1024)).toFixed(1);
+    const usedGb = (trafficUsed / (1024**3)).toFixed(2);
+    const usedStr = trafficUsed >= 1024**3 ? `${usedGb} ГБ` : `${usedMb} МБ`;
+    const limitStr = trafficLimit >= 1024**3 ? `${Math.round(trafficLimit/(1024**3))} ГБ` : trafficLimit > 0 ? `${Math.round(trafficLimit/(1024*1024))} МБ` : '—';
+
+    let daysLeft = '♾️ Без срока';
+    if (expiry) {
+      const delta = Math.floor((new Date(expiry) - new Date()) / (1000*60*60*24));
+      daysLeft = delta > 0 ? `${delta} дней` : '❗ Истёк';
+    }
+
+    let keysHTML = '';
+    if (keys && keys.length > 0) {
+      keys.forEach(k => {
+        const srv = k.server || '';
+        const flag = srv.includes('russia') || srv.includes('212.15') ? '🇷🇺' : srv.includes('de') ? '🇩🇪' : srv.includes('fin') ? '🇫🇮' : '🌍';
+        const proto = (k.protocol || 'vless').toUpperCase();
+        const keyVal = k.key || '—';
+        keysHTML += `
+          <div class="key-block">
+            <div class="key-header">
+              <div class="key-proto"><span class="key-flag">${flag}</span> ${proto}</div>
+              <button class="copy-btn" onclick="copyText('${keyVal.replace(/'/g,"\\'")}', this)">Копировать</button>
+            </div>
+            <div class="key-value">${keyVal}</div>
+          </div>`;
+      });
+    } else {
+      keysHTML = '<div style="color:var(--text2);font-size:13px;padding:10px 0">⚠️ Ключи генерируются, подождите минуту...</div>';
+    }
+
+    const subToken = user.subscription_token || '';
+    const subHTML = subToken ? `
+      <div class="sub-block">
+        <div class="sub-title">🔗 Ссылка-подписка (обновляется автоматически)</div>
+        <div class="sub-value">${BOT_API}/sub/${subToken}</div>
+        <button class="copy-btn" onclick="copyText('${BOT_API}/sub/${subToken}', this)" style="margin-top:10px">Копировать ссылку</button>
+      </div>` : '';
+
+    container.innerHTML = `
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">Статус</span>
+          <span class="status-online"><span class="status-dot"></span>${status === 'active' ? 'Активен' : status}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">🖥️ Серверы</span>
+          <span class="status-online"><span class="status-dot"></span>Онлайн</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📅 Осталось</span>
+          <span class="info-value">${daysLeft}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📊 Трафик</span>
+          <span class="info-value">${usedStr} / ${limitStr}</span>
+        </div>
+      </div>
+
+      <div class="section-title">Ключи подключения</div>
+      ${keysHTML}
+      ${subHTML}
+
+      <button class="action-btn btn-buy" onclick="goScreen('screen-buy')" style="margin-top:8px">🔄 Продлить подписку</button>
+    `;
+  } catch(e) {
+    container.innerHTML = `<div class="no-vpn-state"><div class="no-vpn-icon">⚠️</div><div class="no-vpn-text">Ошибка загрузки</div><div class="no-vpn-sub">${e.message}</div></div>`;
+  }
+}
+</script>
+</body>
+</html>

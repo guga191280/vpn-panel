@@ -1,0 +1,532 @@
+"""
+🌈 HAPPVIP BOT — Full rewrite
+Telegram Stars only, 1 plan, free trial
+"""
+import asyncio, logging, aiohttp
+from datetime import datetime, timedelta
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart, Command
+from aiogram.types import (
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    LabeledPrice, PreCheckoutQuery, Message
+)
+from aiogram.fsm.storage.memory import MemoryStorage
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  CONFIG
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOT_TOKEN = "8719621968:AAFWt_3QHq7f-5FRSG2MZlpt0s7EBdCgCzA"
+PANEL_URL = "https://panel.alexanderoff.ru"
+PANEL_API_TOKEN = "5c58fb006cee1476fa7e4d27d97c79e8c177bf271fe89665da2a4016d07b1eff"
+ADMIN_IDS = [669805176]
+SUPPORT = "https://t.me/vpnruss2"
+
+HEADERS = {"Authorization": f"Bearer {PANEL_API_TOKEN}"}
+
+D  = "══════════════════"
+D2 = "──────────────────"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  PLANS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLANS = {
+    "trial": {
+        "name": "🎁 Бесплатный тест",
+        "desc": "100 МБ · без срока",
+        "traffic_gb": 0,
+        "traffic_bytes": 100 * 1024 * 1024,  # 100 MB
+        "days": 0,          # 0 = no expiry
+        "stars": 0,
+    },
+    "month": {
+        "name": "🚀 1 месяц",
+        "desc": "200 ГБ · 30 дней",
+        "traffic_gb": 200,
+        "traffic_bytes": 200 * 1024 * 1024 * 1024,
+        "days": 30,
+        "stars": 1,
+    },
+}
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  PANEL API
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async def api_get(path):
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.get(f"{PANEL_URL}{path}", headers=HEADERS, ssl=False) as r:
+                return await r.json()
+    except Exception as e:
+        logger.error(f"API GET {path}: {e}")
+        return None
+
+async def api_post(path, data):
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.post(f"{PANEL_URL}{path}", json=data, headers=HEADERS, ssl=False) as r:
+                return await r.json()
+    except Exception as e:
+        logger.error(f"API POST {path}: {e}")
+        return None
+
+async def api_put(path, data):
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.put(f"{PANEL_URL}{path}", json=data, headers=HEADERS, ssl=False) as r:
+                return await r.json()
+    except Exception as e:
+        logger.error(f"API PUT {path}: {e}")
+        return None
+
+async def get_user_by_tg(tg_id: int):
+    users = await api_get("/api/users")
+    if not users:
+        return None
+    for u in users:
+        if str(u.get("telegram_id", "")) == str(tg_id) or \
+           u.get("username", "") == f"tg_{tg_id}":
+            return u
+    return None
+
+async def create_panel_user(tg_id: int, plan_key: str):
+    plan = PLANS[plan_key]
+    data = {
+        "username": f"tg_{tg_id}",
+        "telegram_id": tg_id,
+        "traffic_limit": plan["traffic_bytes"],
+        "status": "active",
+    }
+    if plan["days"] > 0:
+        data["expiry_date"] = (datetime.now() + timedelta(days=plan["days"])).strftime("%Y-%m-%d")
+    else:
+        data["expiry_date"] = None
+    return await api_post("/api/users", data)
+
+async def extend_panel_user(user_id: int, plan_key: str):
+    plan = PLANS[plan_key]
+    data = {
+        "traffic_limit": plan["traffic_bytes"],
+        "status": "active",
+    }
+    if plan["days"] > 0:
+        data["expiry_date"] = (datetime.now() + timedelta(days=plan["days"])).strftime("%Y-%m-%d")
+    return await api_put(f"/api/users/{user_id}", data)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  KEYBOARDS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def kb_main():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🚀 Купить VPN", callback_data="buy_month"),
+            InlineKeyboardButton(text="🎁 Бесплатный тест", callback_data="buy_trial"),
+        ],
+        [
+            InlineKeyboardButton(text="📱 Как подключиться", callback_data="howto"),
+            InlineKeyboardButton(text="🔑 Мой VPN", callback_data="my_vpn"),
+        ],
+        [
+            InlineKeyboardButton(text="ℹ️ Поддержка", url=SUPPORT),
+        ],
+    ])
+
+def kb_back():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main")]
+    ])
+
+def kb_my_vpn():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔑 Мои ключи", callback_data="my_keys"),
+            InlineKeyboardButton(text="🔄 Продлить", callback_data="buy_month"),
+        ],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main")],
+    ])
+
+def kb_no_vpn():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Купить VPN", callback_data="buy_month")],
+        [InlineKeyboardButton(text="🎁 Бесплатный тест", callback_data="buy_trial")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main")],
+    ])
+
+def kb_confirm_trial():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Получить бесплатно", callback_data="confirm_trial")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="main")],
+    ])
+
+def kb_confirm_month():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Оплатить ⭐ 1 Star", callback_data="confirm_month")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="main")],
+    ])
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  TEXTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def txt_welcome(name: str) -> str:
+    return (
+        f"🎉 <b>Добро пожаловать, {name}!</b>\n\n"
+        f"🌈 <b>Premium VPN Service</b>\n"
+        f"{D}\n"
+        f"🚀 <b>Что вас ждёт:</b>\n"
+        f"  🔴 №1 по скорости в России\n"
+        f"  🟠 Обходит все глушилки\n"
+        f"  🟡 Комфортная связь для вашего бизнеса\n"
+        f"  🟢 Работает на всех устройствах\n"
+        f"  🔵 Оплата только через ⭐ Telegram Stars\n"
+        f"{D}\n"
+        f"👇 <b>Выберите действие:</b>"
+    )
+
+def txt_trial_info() -> str:
+    return (
+        f"🎁 <b>Бесплатный тест</b>\n"
+        f"{D}\n"
+        f"📦 Трафик: <b>100 МБ</b>\n"
+        f"📅 Срок: <b>Без ограничений</b>\n"
+        f"💳 Цена: <b>Бесплатно</b>\n"
+        f"{D}\n"
+        f"🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n"
+        f"⚡ VLESS Reality + Hysteria2\n"
+        f"{D2}\n"
+        f"👇 Нажмите для активации:"
+    )
+
+def txt_month_info() -> str:
+    return (
+        f"🚀 <b>Тариф: 1 месяц</b>\n"
+        f"{D}\n"
+        f"📦 Трафик: <b>200 ГБ</b>\n"
+        f"📅 Срок: <b>30 дней</b>\n"
+        f"💳 Цена: <b>⭐ 1 Telegram Star</b>\n"
+        f"{D}\n"
+        f"🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n"
+        f"⚡ VLESS Reality + Hysteria2\n"
+        f"📱 iOS · Android · Windows · macOS\n"
+        f"{D2}\n"
+        f"👇 Нажмите для оплаты:"
+    )
+
+def txt_keys(user: dict, keys, sub_token: str, plan_key: str) -> str:
+    plan = PLANS[plan_key]
+    expiry = user.get("expiry_date")
+    traffic_used = user.get("traffic_used", 0) or 0
+    traffic_limit = user.get("traffic_limit", 0) or 0
+
+    used_mb = round(traffic_used / (1024 * 1024), 1)
+    used_gb = round(traffic_used / (1024 ** 3), 2)
+
+    if traffic_limit >= 1024 ** 3:
+        limit_str = f"{int(traffic_limit / (1024**3))} ГБ"
+    elif traffic_limit > 0:
+        limit_mb = round(traffic_limit / (1024 * 1024), 0)
+        limit_str = f"{int(limit_mb)} МБ"
+    else:
+        limit_str = "—"
+
+    used_str = f"{used_gb} ГБ" if traffic_used >= 1024**3 else f"{used_mb} МБ"
+
+    # Days left
+    days_left = "—"
+    if expiry:
+        try:
+            exp_date = datetime.strptime(expiry, "%Y-%m-%d")
+            delta = (exp_date - datetime.now()).days
+            days_left = f"{delta} дней" if delta > 0 else "❗ Истёк"
+        except:
+            days_left = expiry
+    else:
+        days_left = "♾️ Без срока"
+
+    lines = [
+        f"✅ <b>VPN активирован!</b>",
+        D,
+        f"📅 Осталось: <b>{days_left}</b>",
+        f"📦 Трафик: <b>{used_str} / {limit_str}</b>",
+        D,
+        f"🔑 <b>Ваши ключи:</b>",
+        "",
+    ]
+
+    if keys:
+        for k in keys:
+            srv = k.get("server", "")
+            flag = "🇷🇺" if ("russia" in srv or "212.15" in srv) else \
+                   "🇩🇪" if "de" in srv else \
+                   "🇫🇮" if "fin" in srv else "🌍"
+            proto = k.get("protocol", "vless").upper()
+            key_str = k.get("key", "—")
+            lines += [
+                f"{flag} <b>{proto}</b>",
+                f"<code>{key_str}</code>",
+                "",
+            ]
+    else:
+        lines += ["⚠️ Ключи генерируются, подождите 1 минуту.", ""]
+
+    if sub_token:
+        lines += [
+            D2,
+            f"🔗 <b>Ссылка-подписка:</b>",
+            f"<code>{PANEL_URL}/sub/{sub_token}</code>",
+            "",
+        ]
+
+    lines += [
+        D2,
+        f"📱 Android/iOS: <b>Happ VPN · Hiddify · v2Tun · v2Box</b>",
+        f"💻 PC: <b>Hiddify Next</b>",
+    ]
+
+    return "\n".join(lines)
+
+def txt_howto() -> str:
+    return (
+        f"📱 <b>Как подключиться к VPN</b>\n"
+        f"{D}\n\n"
+        f"<b>📱 Android и iPhone:</b>\n\n"
+        f"  🟢 <b>Happ VPN</b>\n"
+        f"     Android: <a href='https://play.google.com/store/apps/details?id=com.happvpn.app'>Google Play</a>\n"
+        f"     iOS: <a href='https://apps.apple.com/app/happ-proxy-utility/id6504287215'>App Store</a>\n\n"
+        f"  🔵 <b>Hiddify</b>\n"
+        f"     Android: <a href='https://play.google.com/store/apps/details?id=app.hiddify.com'>Google Play</a>\n"
+        f"     iOS: <a href='https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532'>App Store</a>\n\n"
+        f"  🟣 <b>v2Tun</b>\n"
+        f"     Android: <a href='https://play.google.com/store/apps/details?id=com.v2tun.android'>Google Play</a>\n"
+        f"     iOS: <a href='https://apps.apple.com/app/v2tun/id6476628951'>App Store</a>\n\n"
+        f"  🟡 <b>v2Box</b>\n"
+        f"     Android: <a href='https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box'>Google Play</a>\n"
+        f"     iOS: <a href='https://apps.apple.com/app/v2box-v2ray-client/id6446814690'>App Store</a>\n\n"
+        f"{D2}\n"
+        f"<b>💻 Windows / macOS / Linux:</b>\n\n"
+        f"  🖥 <b>Hiddify Next</b>: <a href='https://github.com/hiddify/hiddify-next/releases'>Скачать</a>\n"
+        f"  🖥 <b>v2rayN</b> (Windows): <a href='https://github.com/2dust/v2rayN/releases'>Скачать</a>\n\n"
+        f"{D}\n"
+        f"<b>Шаги:</b>\n"
+        f"1️⃣ Установите приложение\n"
+        f"2️⃣ Нажмите 🔑 <b>Мой VPN</b> → <b>Мои ключи</b>\n"
+        f"3️⃣ Скопируйте ключ и вставьте в приложение\n"
+        f"   или используйте ссылку-подписку\n\n"
+        f"💬 Нужна помощь? <a href='{SUPPORT}'>Поддержка</a>"
+    )
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  HANDLERS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@dp.message(CommandStart())
+async def cmd_start(msg: Message):
+    name = msg.from_user.first_name or "друг"
+    await msg.answer(txt_welcome(name), reply_markup=kb_main(), parse_mode="HTML")
+
+@dp.callback_query(F.data == "main")
+async def cb_main(cb: types.CallbackQuery):
+    name = cb.from_user.first_name or "друг"
+    await cb.message.edit_text(txt_welcome(name), reply_markup=kb_main(), parse_mode="HTML")
+    await cb.answer()
+
+# ── BUY TRIAL ──
+@dp.callback_query(F.data == "buy_trial")
+async def cb_buy_trial(cb: types.CallbackQuery):
+    await cb.message.edit_text(txt_trial_info(), reply_markup=kb_confirm_trial(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data == "confirm_trial")
+async def cb_confirm_trial(cb: types.CallbackQuery):
+    await cb.answer()
+    tg_id = cb.from_user.id
+    existing = await get_user_by_tg(tg_id)
+    if existing:
+        await cb.message.edit_text(
+            f"ℹ️ <b>У вас уже есть аккаунт!</b>\n\nИспользуйте <b>🔑 Мой VPN</b> для просмотра ключей.",
+            reply_markup=kb_my_vpn(), parse_mode="HTML"
+        )
+        return
+    user = await create_panel_user(tg_id, "trial")
+    if user and user.get("id"):
+        keys = await api_get(f"/api/users/{user['id']}/keys") or []
+        sub = user.get("subscription_token", "")
+        await cb.message.edit_text(
+            txt_keys(user, keys, sub, "trial"),
+            reply_markup=kb_back(), parse_mode="HTML"
+        )
+    else:
+        await cb.message.edit_text(
+            "❌ Ошибка создания аккаунта. Напишите в поддержку.",
+            reply_markup=kb_back(), parse_mode="HTML"
+        )
+
+# ── BUY MONTH ──
+@dp.callback_query(F.data == "buy_month")
+async def cb_buy_month(cb: types.CallbackQuery):
+    await cb.message.edit_text(txt_month_info(), reply_markup=kb_confirm_month(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data == "confirm_month")
+async def cb_confirm_month(cb: types.CallbackQuery):
+    await bot.send_invoice(
+        chat_id=cb.from_user.id,
+        title="🚀 VPN 1 месяц",
+        description="200 ГБ трафика · 30 дней · VLESS Reality + Hysteria2",
+        payload=f"vpn_month_{cb.from_user.id}",
+        currency="XTR",
+        prices=[LabeledPrice(label="VPN 1 месяц", amount=1)],
+    )
+    await cb.answer()
+
+@dp.pre_checkout_query()
+async def pre_checkout(q: PreCheckoutQuery):
+    await q.answer(ok=True)
+
+@dp.message(F.successful_payment)
+async def on_payment(msg: Message):
+    payload = msg.successful_payment.invoice_payload
+    parts = payload.split("_")
+    if len(parts) < 2 or parts[0] != "vpn":
+        return
+    plan_key = parts[1]
+    plan = PLANS.get(plan_key)
+    if not plan:
+        return
+
+    await msg.answer(
+        f"⭐ <b>Оплата получена!</b>\n\n⏳ Активируем ваш VPN...",
+        parse_mode="HTML"
+    )
+
+    tg_id = msg.from_user.id
+    existing = await get_user_by_tg(tg_id)
+
+    if existing:
+        user = await extend_panel_user(existing["id"], plan_key)
+        if not user or not user.get("id"):
+            user = existing
+    else:
+        user = await create_panel_user(tg_id, plan_key)
+
+    uid = (user or {}).get("id") or (existing or {}).get("id")
+    if uid:
+        keys = await api_get(f"/api/users/{uid}/keys") or []
+        sub = (user or existing or {}).get("subscription_token", "")
+        await msg.answer(
+            txt_keys(user or existing, keys, sub, plan_key),
+            reply_markup=kb_back(), parse_mode="HTML"
+        )
+    else:
+        await msg.answer(
+            "❌ <b>Ошибка активации.</b>\nНапишите в поддержку — платёж сохранён.",
+            reply_markup=kb_back(), parse_mode="HTML"
+        )
+
+# ── MY VPN ──
+@dp.callback_query(F.data == "my_vpn")
+async def cb_my_vpn(cb: types.CallbackQuery):
+    tg_id = cb.from_user.id
+    user = await get_user_by_tg(tg_id)
+    if not user:
+        await cb.message.edit_text(
+            f"🔍 <b>Аккаунт не найден</b>\n\nУ вас ещё нет VPN.\nВыберите тариф:",
+            reply_markup=kb_no_vpn(), parse_mode="HTML"
+        )
+    else:
+        expiry = user.get("expiry_date")
+        status = user.get("status", "unknown")
+        status_icon = "🟢" if status == "active" else "🔴"
+        traffic_used = user.get("traffic_used", 0) or 0
+        traffic_limit = user.get("traffic_limit", 0) or 0
+        used_mb = round(traffic_used / (1024*1024), 1)
+        used_gb = round(traffic_used / (1024**3), 2)
+        used_str = f"{used_gb} ГБ" if traffic_used >= 1024**3 else f"{used_mb} МБ"
+        if traffic_limit >= 1024**3:
+            limit_str = f"{int(traffic_limit/(1024**3))} ГБ"
+        elif traffic_limit > 0:
+            limit_str = f"{int(traffic_limit/(1024*1024))} МБ"
+        else:
+            limit_str = "—"
+
+        days_left = "♾️ Без срока"
+        server_status = "🟢 Онлайн"
+        if expiry:
+            try:
+                exp_date = datetime.strptime(expiry, "%Y-%m-%d")
+                delta = (exp_date - datetime.now()).days
+                days_left = f"<b>{delta} дней</b>" if delta > 0 else "❗ <b>Истёк</b>"
+            except:
+                days_left = expiry
+
+        text = (
+            f"👤 <b>Мой VPN</b>\n"
+            f"{D}\n"
+            f"{status_icon} Статус: <b>{status}</b>\n"
+            f"🖥 Сервер: {server_status}\n"
+            f"📅 Осталось: {days_left}\n"
+            f"📊 Трафик: <b>{used_str} / {limit_str}</b>\n"
+            f"{D}\n"
+            f"🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮"
+        )
+        await cb.message.edit_text(text, reply_markup=kb_my_vpn(), parse_mode="HTML")
+    await cb.answer()
+
+# ── MY KEYS ──
+@dp.callback_query(F.data == "my_keys")
+async def cb_my_keys(cb: types.CallbackQuery):
+    tg_id = cb.from_user.id
+    user = await get_user_by_tg(tg_id)
+    if not user:
+        await cb.answer("❌ Аккаунт не найден", show_alert=True)
+        return
+    keys = await api_get(f"/api/users/{user['id']}/keys") or []
+    sub = user.get("subscription_token", "")
+    # detect plan
+    tl = user.get("traffic_limit", 0) or 0
+    plan_key = "month" if tl >= 1024**3 else "trial"
+    await cb.message.edit_text(
+        txt_keys(user, keys, sub, plan_key),
+        reply_markup=kb_back(), parse_mode="HTML"
+    )
+    await cb.answer()
+
+# ── HOW TO ──
+@dp.callback_query(F.data == "howto")
+async def cb_howto(cb: types.CallbackQuery):
+    await cb.message.edit_text(
+        txt_howto(),
+        reply_markup=kb_back(),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+    await cb.answer()
+
+# ── ADMIN ──
+@dp.message(Command("admin"))
+async def cmd_admin(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS:
+        return
+    try:
+        users = await api_get("/api/users") or []
+        active = sum(1 for u in users if u.get("status") == "active")
+        await msg.answer(
+            f"🛡 <b>Admin Panel</b>\n{D}\n"
+            f"👥 Всего: <b>{len(users)}</b>\n"
+            f"✅ Активных: <b>{active}</b>",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await msg.answer(f"❌ Ошибка: {e}")
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  MAIN
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async def main():
+    logger.info("🚀 HAPPVIP Bot starting...")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())

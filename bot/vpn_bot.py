@@ -160,7 +160,7 @@ async def add_bonus_days(tg_id, days):
         new_expire = int(current_expire + days*86400)
     else:
         new_expire = int(datetime.now().timestamp() + days*86400)
-    result = await api_put(f"/api/users/{user['id']}", {"expire_at": new_expire, "status": "active"})
+    result = await api_put(f"/api/users/{user.get('user_id') or user.get('id')}", {"expire_at": new_expire, "status": "active"})
     return result is not None
 def parse_user_info(user):
     data_used = user.get("data_used", 0) or 0
@@ -181,8 +181,7 @@ def kb_main():
         [InlineKeyboardButton(text="📱 Как подключиться", callback_data="howto"),
          InlineKeyboardButton(text="🔑 Мой VPN", callback_data="my_vpn")],
         [InlineKeyboardButton(text="👥 Реферальная программа", callback_data="referral")],
-        [InlineKeyboardButton(text="🌈 Открыть приложение", web_app=types.WebAppInfo(url="https://panel.alexanderoff.ru:8444/webapp.html"))],
-        [InlineKeyboardButton(text="ℹ️ Поддержка", url=SUPPORT)],
+[InlineKeyboardButton(text="ℹ️ Поддержка", url=SUPPORT)],
     ])
 def kb_back():
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🏠 Главное меню", callback_data="main")]])
@@ -256,8 +255,6 @@ def txt_keys(user, plan_key):
 def txt_howto():
     return (f"📱 <b>Как подключиться к VPN</b>\n{D}\n\n"
             f"<b>📱 Android и iPhone:</b>\n\n"
-            f"  🟢 <b>Happ VPN</b>\n     <a href='https://play.google.com/store/apps/details?id=com.happvpn.app'>Android</a> · <a href='https://apps.apple.com/app/happ-proxy-utility/id6504287215'>iOS</a>\n\n"
-            f"  🔵 <b>Hiddify</b>\n     <a href='https://play.google.com/store/apps/details?id=app.hiddify.com'>Android</a> · <a href='https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532'>iOS</a>\n\n"
             f"  🟣 <b>v2Tun</b>\n     <a href='https://play.google.com/store/apps/details?id=com.v2tun.android'>Android</a> · <a href='https://apps.apple.com/app/v2tun/id6476628951'>iOS</a>\n\n"
             f"  🟡 <b>v2Box</b>\n     <a href='https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box'>Android</a> · <a href='https://apps.apple.com/app/v2box-v2ray-client/id6446814690'>iOS</a>\n\n"
             f"{D2}\n<b>💻 Windows / macOS / Linux:</b>\n\n"

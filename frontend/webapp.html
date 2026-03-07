@@ -690,8 +690,8 @@
             </div>
           </div>
           <div class="plan-price">
-            <div class="price-amount price-stars">⭐ 1</div>
-            <div class="price-label">Telegram Star</div>
+            <div class="price-amount price-stars">⭐ 250</div>
+            <div class="price-label">Telegram Stars</div>
           </div>
         </div>
       </div>
@@ -778,11 +778,11 @@
       </div>
       <div class="info-row">
         <span class="info-label">💳 Цена</span>
-        <div class="stars-badge">⭐ 1 Telegram Star</div>
+        <div class="stars-badge">⭐ 250 Telegram Starss</div>
       </div>
     </div>
 
-    <button class="action-btn btn-buy" onclick="buyVPN()">⭐ Оплатить 1 Star</button>
+    <button class="action-btn btn-buy" onclick="buyVPN()">⭐ Оплатить 250 Stars</button>
   </div>
 
   <!-- ═══ MY VPN SCREEN ═══ -->
@@ -981,11 +981,11 @@ async function loadMyVPN() {
   container.innerHTML = `<div class="loading"><div class="spinner"></div>Загрузка...</div>`;
 
   try {
-    const resp = await fetch(`${BOT_API}/api/users`, {
-      headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+    const resp = await fetch(`${BOT_API}/bot/users/${tgUserId}`, {
+      headers: { 'x-bot-token': 'bot_e30bbaf2d4e2a9ea85e718aaa340652a' }
     });
-    const users = await resp.json();
-    const user = users.find(u => String(u.telegram_id) === String(tgUserId) || u.username === `tg_${tgUserId}`);
+    const user = await resp.json();
+    if (!user || !user.success) { user = null; }
 
     if (!user) {
       container.innerHTML = `
@@ -1000,15 +1000,12 @@ async function loadMyVPN() {
     }
 
     // Load keys
-    const keysResp = await fetch(`${BOT_API}/api/users/${user.id}/keys`, {
-      headers: { 'Authorization': `Bearer ${API_TOKEN}` }
-    });
-    const keys = await keysResp.json();
+    const keys = Object.entries(user.keys || {}).filter(([k,v]) => v).map(([k,v]) => ({key: v, server: k}));
 
     const status = user.status || 'unknown';
-    const expiry = user.expiry_date;
-    const trafficUsed = user.traffic_used || 0;
-    const trafficLimit = user.traffic_limit || 0;
+    const expiry = user.expire_at ? new Date(user.expire_at * 1000).toISOString() : null;
+    const trafficUsed = user.data_used || 0;
+    const trafficLimit = user.data_limit || 0;
     const usedMb = (trafficUsed / (1024*1024)).toFixed(1);
     const usedGb = (trafficUsed / (1024**3)).toFixed(2);
     const usedStr = trafficUsed >= 1024**3 ? `${usedGb} ГБ` : `${usedMb} МБ`;
@@ -1040,12 +1037,12 @@ async function loadMyVPN() {
       keysHTML = '<div style="color:var(--text2);font-size:13px;padding:10px 0">⚠️ Ключи генерируются, подождите минуту...</div>';
     }
 
-    const subToken = user.subscription_token || '';
+    const subToken = user.sub_token || '';
     const subHTML = subToken ? `
       <div class="sub-block">
         <div class="sub-title">🔗 Ссылка-подписка (обновляется автоматически)</div>
-        <div class="sub-value">${BOT_API}/sub/${subToken}</div>
-        <button class="copy-btn" onclick="copyText('${BOT_API}/sub/${subToken}', this)" style="margin-top:10px">Копировать ссылку</button>
+        <div class="sub-value">${user.sub_url || BOT_API+"/sub/"+subToken}</div>
+        <button class="copy-btn" onclick="copyText('${user.sub_url || BOT_API+"/sub/"+subToken}', this)" style="margin-top:10px">Копировать ссылку</button>
       </div>` : '';
 
     container.innerHTML = `

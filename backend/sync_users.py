@@ -16,11 +16,18 @@ def sync_main_node(uuids):
     try:
         with open('/etc/sing-box/config.json') as f:
             config = json.load(f)
+        db3 = get_db()
+        bridge_uuid2 = db3.execute("SELECT value FROM settings WHERE key='bridge_uuid'").fetchone()
+        bridge_uuid2 = bridge_uuid2[0] if bridge_uuid2 else None
+        db3.close()
         for inbound in config['inbounds']:
             if inbound.get('type') == 'vless':
                 inbound['users'] = [{"uuid": u, "flow": "xtls-rprx-vision"} for u in uuids]
             elif inbound.get('type') == 'hysteria2':
-                inbound['users'] = [{"password": u} for u in uuids]
+                passwords = [{"password": u} for u in uuids]
+                if bridge_uuid2:
+                    passwords.append({"password": bridge_uuid2})
+                inbound['users'] = passwords
         with open('/etc/sing-box/config.json', 'w') as f:
             json.dump(config, f, indent=2)
         os.system('systemctl restart sing-box')
@@ -46,11 +53,19 @@ def sync_remote_node(node):
         ssh.connect(host, port=ssh_port, username=ssh_user, password=ssh_pass, timeout=15)
         stdin, stdout, stderr = ssh.exec_command('cat /etc/sing-box/config.json')
         cfg = json.loads(stdout.read())
+        # Получаем bridge_uuid чтобы не потерять его
+        db2 = get_db()
+        bridge_uuid = db2.execute("SELECT value FROM settings WHERE key='bridge_uuid'").fetchone()
+        bridge_uuid = bridge_uuid[0] if bridge_uuid else None
+        db2.close()
         for inb in cfg.get('inbounds', []):
             if inb.get('type') == 'vless':
                 inb['users'] = [{"uuid": u, "flow": "xtls-rprx-vision"} for u in uuids]
             elif inb.get('type') == 'hysteria2':
-                inb['users'] = [{"password": u} for u in uuids]
+                passwords = [{"password": u} for u in uuids]
+                if bridge_uuid:
+                    passwords.append({"password": bridge_uuid})
+                inb['users'] = passwords
         sftp = ssh.open_sftp()
         with sftp.open('/etc/sing-box/config.json', 'w') as f:
             f.write(json.dumps(cfg, indent=2))

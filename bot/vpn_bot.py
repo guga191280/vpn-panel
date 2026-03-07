@@ -109,18 +109,25 @@ async def api_put(path, data):
     except Exception as e:
         logger.error(f"API PUT {path}: {e}"); return None
 async def get_user_by_tg(tg_id):
-    users = await api_get("/api/users")
-    if not users or not isinstance(users, list): return None
-    for u in users:
-        if not isinstance(u, dict): continue
-        if str(u.get("telegram_id",""))==str(tg_id) or u.get("username","")==f"tg_{tg_id}":
-            return u
-    return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{PANEL_URL}/bot/users/{tg_id}",
+                headers={"x-bot-token": "bot_e30bbaf2d4e2a9ea85e718aaa340652a"},
+                ssl=False
+            ) as r:
+                u = await r.json()
+                if u.get("success"):
+                    u["_keys"] = u.get("keys", {})
+                    return u
+        return None
+    except Exception as e:
+        logger.error(f"get_user_by_tg: {e}"); return None
 async def create_panel_user(tg_id, plan_key):
     plan = PLANS[plan_key]
     expire_at = int((datetime.now()+timedelta(days=plan["days"])).timestamp()) if plan["days"] > 0 else 0
     data = {"username": f"tg_{tg_id}", "telegram_id": str(tg_id),
-            "data_limit": plan["traffic_bytes"], "expire_at": expire_at}
+            "data_limit_mb": plan["traffic_bytes"] / (1024*1024), "expire_at": expire_at}
     async with aiohttp.ClientSession() as session:
         async with session.post(
             f"{PANEL_URL}/bot/users/create",
@@ -130,21 +137,14 @@ async def create_panel_user(tg_id, plan_key):
         ) as r:
             result = await r.json()
             if result.get("success"):
-                user_id = result["user_id"]
-                # Устанавливаем лимит трафика через PUT
-                await api_put(f"/api/users/{user_id}", {"data_limit_mb": plan["traffic_bytes"] / (1024*1024)})
-                # Получаем ключи через bot endpoint (там есть sub_token)
+                # Получаем полные данные через GET
                 async with session.get(
                     f"{PANEL_URL}/bot/users/{tg_id}",
                     headers={"x-bot-token": "bot_e30bbaf2d4e2a9ea85e718aaa340652a"},
                     ssl=False
                 ) as r2:
-                    bot_user = await r2.json()
-                # Получаем полный объект юзера
-                user = await api_get(f"/api/users/{user_id}")
-                if user:
-                    user["_keys"] = result.get("keys", {})
-                    user["sub_token"] = bot_user.get("sub_token") or result.get("sub_token","")
+                    user = await r2.json()
+                user["_keys"] = result.get("keys", {})
                 return user
             return None
 async def extend_panel_user(user_id, plan_key):
@@ -221,7 +221,7 @@ def txt_keys(user, plan_key):
     hy2_ru     = k.get("hy2_ru75")   or ""
     # Сначала подписка отдельным блоком
     sub_token = user.get("sub_token","")
-    real_sub = f"https://panel.alexanderoff.ru/sub/{sub_token}" if sub_token else ""
+    real_sub = user.get("sub_url","") or (f"https://panel.alexanderoff.ru/sub/{sub_token}" if sub_token else "")
     if real_sub:
         lines += ["", "🔗 <b>Ссылка-подписка:</b>", f"<code>{real_sub}</code>"]
 

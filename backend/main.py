@@ -594,20 +594,24 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
     sub_url = f"https://{domain}/sub/{sub_token}"
     
     keys = keygen.generate_keys(user_id)
-    hy2_url = keys.get("hy2_main", "")
-    
+    # Маппинг ключей из keygen
+    vless_de  = next((v for k,v in keys.items() if 'vless' in k.lower() and 'de' in k.lower() and 'bridge' not in k.lower()), "")
+    hy2_de    = next((v for k,v in keys.items() if 'hy2' in k.lower() and 'de' in k.lower() and 'bridge' not in k.lower()), "")
+    vless_fin = next((v for k,v in keys.items() if 'vless' in k.lower() and 'fin' in k.lower()), "")
+    hy2_fin   = next((v for k,v in keys.items() if 'hy2' in k.lower() and 'fin' in k.lower() and 'bridge' not in k.lower()), "")
+    hy2_br_de = next((v for k,v in keys.items() if 'bridge' in k.lower() and 'de' in k.lower()), "")
+    hy2_br_fin= next((v for k,v in keys.items() if 'bridge' in k.lower() and 'fin' in k.lower()), "")
+
     conn = get_db()
     try:
         conn.execute("""INSERT INTO users 
             (id,username,telegram_id,status,data_limit,expire_at,
              subscription_url,hysteria2_url,vless_ru75,hy2_ru75,
-             vless_main_bridge,hy2_main_bridge,node_ids,created_at,note,sub_token)
-            VALUES (?,?,?,'active',?,?,?,?,?,?,?,?,?,?,?,?)""",
+             vless_main_bridge,hy2_main_bridge,node_ids,created_at,note,sub_token,vless_de)
+            VALUES (?,?,?,'active',?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (user_id, username, telegram_id, data_limit, expire_at,
-             sub_url, hy2_url,
-             keys.get("vless_ru75",""), keys.get("hy2_ru75",""),
-             keys.get("vless_main_bridge",""), keys.get("hy2_main_bridge",""),
-             json.dumps([]), int(t.time()), "", sub_token))
+             sub_url, hy2_de, vless_fin, hy2_fin, hy2_br_de, hy2_br_fin,
+             json.dumps([]), int(t.time()), "", sub_token, vless_de))
         conn.commit()
     except Exception as e:
         conn.close()
@@ -625,13 +629,12 @@ def bot_create_user(data: dict, bot=Depends(verify_bot_token)):
         "sub_token": sub_token,
         "sub_url": sub_url,
         "keys": {
-            "vless_main": keys.get("vless_main",""),
-            "hy2_main": hy2_url,
-            "vless_ru75": keys.get("vless_ru75",""),
-            "hy2_ru75": keys.get("hy2_ru75",""),
-            "vless_bridge": keys.get("vless_main_bridge",""),
-            "hy2_bridge": keys.get("hy2_main_bridge",""),
-            "all": keys.get("all","")
+            "vless_de": vless_de,
+            "hy2_de": hy2_de,
+            "vless_fin": vless_fin,
+            "hy2_fin": hy2_fin,
+            "hy2_bridge_de": hy2_br_de,
+            "hy2_bridge_fin": hy2_br_fin
         },
         "expire_at": expire_at,
         "expire_days": expire_days
@@ -664,12 +667,12 @@ def bot_get_user(telegram_id: str, bot=Depends(verify_bot_token)):
         "sub_token": sub_token,
         "sub_url": sub_url,
         "keys": {
-            "vless_main": u.get("subscription_url",""),
-            "hy2_main": u.get("hysteria2_url",""),
-            "vless_ru75": u.get("vless_ru75",""),
-            "hy2_ru75": u.get("hy2_ru75",""),
-            "vless_bridge": u.get("vless_main_bridge",""),
-            "hy2_bridge": u.get("hy2_main_bridge","")
+            "vless_de": u.get("vless_de",""),
+            "hy2_de": u.get("hysteria2_url",""),
+            "vless_fin": u.get("vless_ru75",""),
+            "hy2_fin": u.get("hy2_ru75",""),
+            "hy2_bridge_de": u.get("vless_main_bridge",""),
+            "hy2_bridge_fin": u.get("hy2_main_bridge","")
         },
         "expire_at": u.get("expire_at",0),
         "data_limit": u.get("data_limit",0),

@@ -19,7 +19,7 @@ D  = "══════════════════"
 D2 = "──────────────────"
 PLANS = {
     "trial": {"name": "🎁 Бесплатный тест", "traffic_bytes": 100*1024*1024, "days": 0, "stars": 0},
-    "month": {"name": "🚀 1 месяц", "traffic_bytes": 200*1024*1024*1024, "days": 30, "stars": 1},
+    "month": {"name": "🚀 1 месяц", "traffic_bytes": 200*1024*1024*1024, "days": 30, "stars": 250},
 }
 REFERRAL_DAYS_PER_PURCHASE = 7
 bot = Bot(token=BOT_TOKEN)
@@ -147,10 +147,11 @@ async def create_panel_user(tg_id, plan_key):
                 user["_keys"] = result.get("keys", {})
                 return user
             return None
-async def extend_panel_user(user_id, plan_key):
+async def extend_panel_user(tg_id, user_id, plan_key):
     plan = PLANS[plan_key]
     data = {"data_limit_mb": plan["traffic_bytes"] / (1024*1024), "status": "active", "expire_days": plan["days"]}
-    return await api_put(f"/api/users/{user_id}", data)
+    await api_put(f"/api/users/{user_id}", data)
+    return await get_user_by_tg(tg_id)
 async def add_bonus_days(tg_id, days):
     user = await get_user_by_tg(tg_id)
     if not user: return False
@@ -185,13 +186,21 @@ def kb_main():
     ])
 def kb_back():
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🏠 Главное меню", callback_data="main")]])
-def kb_my_vpn():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 Мои ключи", callback_data="my_keys"),
-         InlineKeyboardButton(text="🔄 Продлить", callback_data="buy_month")],
-        [InlineKeyboardButton(text="👥 Рефералы", callback_data="referral"),
-         InlineKeyboardButton(text="🏠 Меню", callback_data="main")],
-    ])
+def kb_my_vpn(is_premium=False):
+    if is_premium:
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔑 Мои ключи", callback_data="my_keys"),
+             InlineKeyboardButton(text="🔄 Продлить", callback_data="buy_month")],
+            [InlineKeyboardButton(text="👥 Рефералы", callback_data="referral"),
+             InlineKeyboardButton(text="🏠 Меню", callback_data="main")],
+        ])
+    else:
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔑 Мои ключи", callback_data="my_keys"),
+             InlineKeyboardButton(text="💎 Купить премиум", callback_data="buy_month")],
+            [InlineKeyboardButton(text="👥 Рефералы", callback_data="referral"),
+             InlineKeyboardButton(text="🏠 Меню", callback_data="main")],
+        ])
 def kb_no_vpn():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Купить VPN", callback_data="buy_month")],
@@ -205,43 +214,44 @@ def txt_welcome(name):
             f"  🔵 Оплата только через ⭐ Telegram Stars\n{D}\n👇 <b>Выберите действие:</b>")
 def txt_keys(user, plan_key):
     used_str, limit_str, days_left = parse_user_info(user)
-    sub_url = user.get("subscription_url", "")
-    all_keys = user.get("all_keys", "{}")
-    try:
-        keys_dict = json.loads(all_keys) if isinstance(all_keys, str) else all_keys
-    except: keys_dict = {}
-    lines = [f"✅ <b>VPN активирован!</b>", D,
-             f"📅 Осталось: <b>{days_left}</b>",
-             f"📦 Трафик: <b>{used_str} / {limit_str}</b>", D]
-    # Ключи из bot endpoint (_keys) или из полей юзера
-    k = user.get("_keys") or {}
-    vless_main = k.get("vless_main") or user.get("vless_ru75") or user.get("vless_main_bridge","")
-    hy2_main   = k.get("hy2_main")   or user.get("hy2_ru75")   or user.get("hy2_main_bridge","") or user.get("hysteria2_url","")
-    vless_ru   = k.get("vless_ru75") or ""
-    hy2_ru     = k.get("hy2_ru75")   or ""
-    # Сначала подписка отдельным блоком
-    sub_token = user.get("sub_token","")
-    real_sub = user.get("sub_url","") or (f"https://panel.alexanderoff.ru/sub/{sub_token}" if sub_token else "")
+    k = user.get("_keys") or user.get("keys") or {}
+    real_sub = user.get("sub_url","")
+
+    def esc(t):
+        for c in r"_*[]()~`>#+-=|{}.!":
+            t = t.replace(c, f"\\{c}")
+        return t
+
+    lines = [
+        f"✅ *VPN активирован\!*",
+        f"📅 Осталось: *{esc(days_left)}*",
+        f"📦 Трафик: *{esc(used_str)} / {esc(limit_str)}*",
+        "",
+    ]
+
     if real_sub:
-        lines += ["", "🔗 <b>Ссылка-подписка:</b>", f"<code>{real_sub}</code>"]
+        lines += [f"🔗 *Ссылка\-подписка:*", f"```\n{real_sub}\n```", ""]
 
-    # Все ключи вместе в одном блоке
-    key_lines = []
-    if vless_main:
-        key_lines += [f"🇩🇪 VLESS Reality DE", vless_main, ""]
-    if hy2_main:
-        key_lines += [f"🇩🇪 Hysteria2 DE", hy2_main, ""]
-    if vless_ru:
-        key_lines += [f"🇷🇺 VLESS Reality RU", vless_ru, ""]
-    if hy2_ru:
-        key_lines += [f"🇷🇺 Hysteria2 RU", hy2_ru, ""]
-
-    if key_lines:
-        lines += ["🔑 <b>Ваши ключи:</b>", f"<code>{'\n'.join(key_lines)}</code>", ""]
+    lines += ["🔑 *Ваши ключи:*"]
+    parts = []
+    if k.get("vless_de"):       parts.append(k["vless_de"])
+    if k.get("hy2_de"):         parts.append(k["hy2_de"])
+    if k.get("vless_fin"):      parts.append(k["vless_fin"])
+    if k.get("hy2_fin"):        parts.append(k["hy2_fin"])
+    if k.get("hy2_bridge_de"):  parts.append(k["hy2_bridge_de"])
+    if k.get("hy2_bridge_fin"): parts.append(k["hy2_bridge_fin"])
+    if parts:
+        lines += ["```\n" + "\n".join(parts) + "\n```"]
     else:
-        lines += ["⚠️ Ключи генерируются, подождите 1 минуту.", ""]
+        lines += ["⚠️ Ключи генерируются, подождите 1 минуту\."]
 
-    lines += [D2, "📱 Android/iOS: <b>Happ VPN · Hiddify · v2Tun · v2Box</b>", "💻 PC: <b>Hiddify Next</b>"]
+    lines += [
+        esc("──────────────────"),
+        "💡 Эти VPN\-ключи показывают лучшую скорость и стабильность при использовании в приложениях *V2Box* и *V2Tun*\.",
+        "",
+        f"📱 Android/iOS: *Happ VPN · Hiddify · v2Tun · v2Box*",
+        f"💻 PC: *Hiddify Next*",
+    ]
     return "\n".join(lines)
 def txt_howto():
     return (f"📱 <b>Как подключиться к VPN</b>\n{D}\n\n"
@@ -304,16 +314,16 @@ async def cb_confirm_trial(cb: types.CallbackQuery):
     if existing:
         await cb.message.edit_text("ℹ️ <b>У вас уже есть аккаунт!</b>\n\nИспользуйте <b>🔑 Мой VPN</b>.", reply_markup=kb_my_vpn(), parse_mode="HTML"); return
     user = await create_panel_user(tg_id, "trial")
-    if user and user.get("id"):
-        await cb.message.edit_text(txt_keys(user, "trial"), reply_markup=kb_back(), parse_mode="HTML")
+    if user:
+        await cb.message.edit_text(txt_keys(user, "trial"), reply_markup=kb_back(), parse_mode="MarkdownV2")
     else:
         await cb.message.edit_text("❌ Ошибка. Напишите в поддержку.", reply_markup=kb_back(), parse_mode="HTML")
 @dp.callback_query(F.data == "buy_month")
 async def cb_buy_month(cb: types.CallbackQuery):
     await cb.message.edit_text(
-        f"🚀 <b>Тариф: 1 месяц</b>\n{D}\n📦 Трафик: <b>200 ГБ</b>\n📅 Срок: <b>30 дней</b>\n💳 Цена: <b>⭐ 1 Telegram Star</b>\n{D}\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n⚡ VLESS Reality + Hysteria2\n📱 iOS · Android · Windows · macOS\n{D2}\n👇 Нажмите для оплаты:",
+        f"🚀 <b>Тариф: 1 месяц</b>\n{D}\n📦 Трафик: <b>200 ГБ</b>\n📅 Срок: <b>30 дней</b>\n💳 Цена: <b>⭐ 250 Telegram Stars</b>\n{D}\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n⚡ VLESS Reality + Hysteria2\n📱 iOS · Android · Windows · macOS\n{D2}\n👇 Нажмите для оплаты:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Оплатить ⭐ 1 Star", callback_data="confirm_month")],
+            [InlineKeyboardButton(text="✅ Оплатить ⭐ 250 Stars", callback_data="confirm_month")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="main")],
         ]), parse_mode="HTML")
     await cb.answer()
@@ -322,7 +332,7 @@ async def cb_confirm_month(cb: types.CallbackQuery):
     await bot.send_invoice(chat_id=cb.from_user.id, title="🚀 VPN 1 месяц",
         description="200 ГБ трафика · 30 дней · VLESS Reality + Hysteria2",
         payload=f"vpn_month_{cb.from_user.id}", currency="XTR",
-        prices=[LabeledPrice(label="VPN 1 месяц", amount=1)])
+        prices=[LabeledPrice(label="VPN 1 месяц", amount=250)])
     await cb.answer()
 @dp.pre_checkout_query()
 async def pre_checkout(q: PreCheckoutQuery):
@@ -338,11 +348,11 @@ async def on_payment(msg: Message):
     tg_id = msg.from_user.id
     existing = await get_user_by_tg(tg_id)
     if existing:
-        user = await extend_panel_user(existing["id"], plan_key) or existing
+        user = await extend_panel_user(tg_id, existing["user_id"] or existing["id"], plan_key) or existing
     else:
         user = await create_panel_user(tg_id, plan_key)
-    if user and user.get("id"):
-        await msg.answer(txt_keys(user, plan_key), reply_markup=kb_back(), parse_mode="HTML")
+    if user:
+        await msg.answer(txt_keys(user, plan_key), reply_markup=kb_back(), parse_mode="MarkdownV2")
     else:
         await msg.answer("❌ <b>Ошибка активации.</b>\nНапишите в поддержку.", reply_markup=kb_back(), parse_mode="HTML")
         return
@@ -368,9 +378,12 @@ async def cb_my_vpn_handler(cb: types.CallbackQuery):
     else:
         st = user.get("status","unknown")
         used_str, limit_str, days_left = parse_user_info(user)
+        tl = user.get("data_limit", 0) or 0
+        is_premium = tl >= 200 * 1024 * 1024 * 1024
+        plan_label = "💎 Премиум" if is_premium else "🎁 Тестовый"
         await cb.message.edit_text(
-            f"👤 <b>Мой VPN</b>\n{D}\n{'🟢' if st=='active' else '🔴'} Статус: <b>{st}</b>\n🖥 Сервер: 🟢 Онлайн\n📅 Осталось: {days_left}\n📊 Трафик: <b>{used_str} / {limit_str}</b>\n{D}\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮",
-            reply_markup=kb_my_vpn(), parse_mode="HTML")
+            f"👤 <b>Мой VPN</b>\n{D}\n{'🟢' if st=='active' else '🔴'} Статус: <b>{st}</b>\n📦 Тариф: <b>{plan_label}</b>\n📅 Осталось: {days_left}\n📊 Трафик: <b>{used_str} / {limit_str}</b>\n{D}\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮",
+            reply_markup=kb_my_vpn(is_premium), parse_mode="HTML")
     await cb.answer()
 @dp.callback_query(F.data == "my_keys")
 async def cb_my_keys(cb: types.CallbackQuery):
@@ -378,8 +391,8 @@ async def cb_my_keys(cb: types.CallbackQuery):
     if not user:
         await cb.answer("❌ Аккаунт не найден", show_alert=True); return
     tl = user.get("data_limit", 0) or 0
-    plan_key = "month" if tl >= 1024**3 else "trial"
-    await cb.message.edit_text(txt_keys(user, plan_key), reply_markup=kb_back(), parse_mode="HTML")
+    plan_key = "month" if tl >= 200 * 1024 * 1024 * 1024 else "trial"
+    await cb.message.edit_text(txt_keys(user, plan_key), reply_markup=kb_back(), parse_mode="MarkdownV2")
     await cb.answer()
 @dp.callback_query(F.data == "howto")
 async def cb_howto(cb: types.CallbackQuery):

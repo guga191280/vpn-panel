@@ -22,12 +22,18 @@ def sync_main_node(uuids):
         db3.close()
         for inbound in config['inbounds']:
             if inbound.get('type') == 'vless':
-                inbound['users'] = [{"uuid": u, "flow": "xtls-rprx-vision"} for u in uuids]
+                inbound['users'] = [{"uuid": u, "name": u, "flow": "xtls-rprx-vision"} for u in uuids]
             elif inbound.get('type') == 'hysteria2':
-                passwords = [{"password": u} for u in uuids]
+                passwords = [{"password": u, "name": u} for u in uuids]
                 if bridge_uuid2:
-                    passwords.append({"password": bridge_uuid2})
+                    passwords.append({"password": bridge_uuid2, "name": bridge_uuid2})
                 inbound['users'] = passwords
+        # Обновляем v2ray_api stats users
+        all_names = list(uuids)
+        if bridge_uuid2:
+            all_names.append(bridge_uuid2)
+        if 'experimental' in config and 'v2ray_api' in config['experimental']:
+            config['experimental']['v2ray_api']['stats']['users'] = all_names
         with open('/etc/sing-box/config.json', 'w') as f:
             json.dump(config, f, indent=2)
         os.system('systemctl restart sing-box')
@@ -60,12 +66,18 @@ def sync_remote_node(node):
         db2.close()
         for inb in cfg.get('inbounds', []):
             if inb.get('type') == 'vless':
-                inb['users'] = [{"uuid": u, "flow": "xtls-rprx-vision"} for u in uuids]
+                inb['users'] = [{"uuid": u, "name": u, "flow": "xtls-rprx-vision"} for u in uuids]
             elif inb.get('type') == 'hysteria2':
-                passwords = [{"password": u} for u in uuids]
+                passwords = [{"password": u, "name": u} for u in uuids]
                 if bridge_uuid:
-                    passwords.append({"password": bridge_uuid})
+                    passwords.append({"password": bridge_uuid, "name": bridge_uuid})
                 inb['users'] = passwords
+        # Обновляем v2ray_api stats users
+        all_names = list(uuids)
+        if bridge_uuid:
+            all_names.append(bridge_uuid)
+        if 'experimental' in cfg and 'v2ray_api' in cfg['experimental']:
+            cfg['experimental']['v2ray_api']['stats']['users'] = all_names
         sftp = ssh.open_sftp()
         with sftp.open('/etc/sing-box/config.json', 'w') as f:
             f.write(json.dumps(cfg, indent=2))

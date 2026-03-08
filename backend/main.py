@@ -826,7 +826,20 @@ def get_subscription(sub_token: str, request: Request):
     if not user:
         conn.close()
         raise HTTPException(status_code=404)
-    
+
+    # Сохраняем IP клиента для учёта трафика
+    try:
+        client_ip = request.headers.get("X-Real-IP") or request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.client.host
+        if client_ip:
+            conn.execute(
+                "INSERT OR REPLACE INTO ip_user_map (ip, user_id, updated_at) VALUES (?, ?, ?)",
+                (client_ip, user['id'], int(time.time()))
+            )
+            conn.commit()
+            print(f"ip_map: {client_ip} -> {user['username']}")
+    except Exception as e:
+        print(f"ip_user_map error: {e}")
+
     # Динамически генерируем ключи через keygen
     user_uuid = user['id']
     # Получаем UUID из subscription_url если есть

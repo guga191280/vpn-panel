@@ -101,67 +101,100 @@ def notify_expiring():
 
 import requests as _req
 
+# Снапшот для дельты трафика по нодам
+_cron_prev_stats = {}
+
 def collect_connections():
-    """Собирает данные подключений из Clash API каждые 5 минут"""
+    """Собирает трафик по протоколам/нодам через V2Ray Stats API (каждые 5 мин)"""
+    import sys, socket, threading
+    proto_dir = '/tmp/vpn_stats_proto'
+    if proto_dir not in sys.path:
+        sys.path.insert(0, proto_dir)
+    venv = '/opt/vpn_panel/venv/lib/python3.12/site-packages'
+    if venv not in sys.path:
+        sys.path.insert(0, venv)
+
+    NODE_CONFIGS = [
+        {'key': 'russia', 'host': '212.15.49.151',  'password': 'PVJXSWnS6ZXUg', 'local_port': 18381},
+        {'key': 'de',     'host': '150.241.106.238', 'password': 'alexander77',    'local_port': 18382},
+        {'key': 'fin',    'host': '150.241.88.243',  'password': 'alexander77',    'local_port': 18383},
+    ]
+    BRIDGE_UUID = '3b5ba9bb-c766-46a4-8485-a3a5e2bddaeb'
+
     try:
-        r = _req.get('http://127.0.0.1:9090/connections', timeout=3)
-        if r.status_code != 200: return
-        data = r.json()
-        conns = data.get('connections', [])
-        if not conns: return
-        
-        conn = get_db()
-        now = int(time.time())
-        hour = now - (now % 3600)
-        
-        for c in conns:
-            meta = c.get('metadata', {})
-            src_ip = meta.get('sourceIP','')
-            proto_type = meta.get('type','')
-            
-            # Определяем протокол
-            if 'hysteria2' in proto_type.lower():
-                protocol = 'hysteria2'
-            elif 'vless' in proto_type.lower():
-                protocol = 'vless'
-            else:
-                protocol = 'other'
-            
-            # Определяем ноду по source IP
-            if src_ip.startswith('185.40'):
-                node_id = 'ru75'
-            else:
-                node_id = 'main'
-            
-            up = c.get('upload', 0)
-            down = c.get('download', 0)
-            
-            # Ищем пользователя по UUID в chains
-            chains = c.get('chains', [])
-            user_id = None
-            username = 'unknown'
-            
-            # Сохраняем почасовую статистику
-            existing = conn.execute(
-                "SELECT id,bytes_up,bytes_down FROM traffic_hourly WHERE hour=? AND protocol=? AND node_id=?",
-                (hour, protocol, node_id)
-            ).fetchone()
-            
-            if existing:
-                conn.execute(
-                    "UPDATE traffic_hourly SET bytes_up=bytes_up+?, bytes_down=bytes_down+? WHERE id=?",
-                    (up, down, existing[0])
-                )
-            else:
-                conn.execute(
-                    "INSERT INTO traffic_hourly (hour,protocol,node_id,bytes_up,bytes_down) VALUES (?,?,?,?,?)",
-                    (hour, protocol, node_id, up, down)
-                )
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f'collect_connections error: {e}')
+        import grpc, stats_pb2, stats_pb2_grpc
+    except ImportError:
+        logging.warning('cron: grpc not available, skip traffic_hourly')
+        return
+
+    db = get_db()
+    now = int(time.time())
+    hour = now - (now % 3600)
+
+    for node in NODE_CONFIGS:
+        local_port = node['local_port']
+        node_key = node['key']
+        try:
+            ch = grpc.insecure_channel(f'127.0.0.1:{local_port}')
+            stub = stats_pb2_grpc.StatsServiceStub(ch)
+            resp = stub.QueryStats(stats_pb2.QueryStatsRequest(pattern='', reset=False), timeout=3)
+            ch.close()
+
+            # Считаем трафик по протоколам
+            proto_up = {}
+            proto_down = {}
+            for s in resp.stat:
+                parts = s.name.split('>>>')
+                if len(parts) != 4 or parts[0] != 'inbound' or parts[2] != 'traffic':
+                    continue
+                tag = parts[1]  # vless-in, hysteria2-in, bridge-fin-in
+                if 'vless' in tag:
+                    proto = 'vless'
+                elif 'hysteria' in tag or 'bridge' in tag:
+                    proto = 'hysteria2'
+                else:
+                    continue
+
+                if parts[3] == 'uplink':
+                    proto_up[proto] = proto_up.get(proto, 0) + s.value
+                elif parts[3] == 'downlink':
+                    proto_down[proto] = proto_down.get(proto, 0) + s.value
+
+            # Считаем дельту
+            prev = _cron_prev_stats.get(node_key, {})
+            for proto in set(list(proto_up.keys()) + list(proto_down.keys())):
+                up = proto_up.get(proto, 0)
+                down = proto_down.get(proto, 0)
+                prev_up = prev.get(f'{proto}_up', up)
+                prev_down = prev.get(f'{proto}_down', down)
+                delta_up = max(0, up - prev_up)
+                delta_down = max(0, down - prev_down)
+                _cron_prev_stats.setdefault(node_key, {})[f'{proto}_up'] = up
+                _cron_prev_stats.setdefault(node_key, {})[f'{proto}_down'] = down
+
+                if delta_up + delta_down <= 0:
+                    continue
+
+                existing = db.execute(
+                    "SELECT id FROM traffic_hourly WHERE hour=? AND protocol=? AND node_id=?",
+                    (hour, proto, node_key)
+                ).fetchone()
+                if existing:
+                    db.execute(
+                        "UPDATE traffic_hourly SET bytes_up=bytes_up+?, bytes_down=bytes_down+? WHERE id=?",
+                        (delta_up, delta_down, existing[0])
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO traffic_hourly (hour,protocol,node_id,bytes_up,bytes_down) VALUES (?,?,?,?,?)",
+                        (hour, proto, node_key, delta_up, delta_down)
+                    )
+
+        except Exception as e:
+            logging.warning(f'cron collect [{node_key}]: {e}')
+
+    db.commit()
+    db.close()
 
 def run():
     logging.info('🔄 Cron запущен')

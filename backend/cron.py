@@ -114,10 +114,16 @@ def collect_connections():
     if venv not in sys.path:
         sys.path.insert(0, venv)
 
+    # Берём node_id из БД чтобы совпадало с таблицей nodes
+    db_nodes = get_db()
+    node_rows = db_nodes.execute("SELECT id, host FROM nodes WHERE status='online'").fetchall()
+    db_nodes.close()
+    host_to_id = {r['host']: r['id'] for r in node_rows}
+
     NODE_CONFIGS = [
-        {'key': 'russia', 'host': '212.15.49.151',  'password': 'PVJXSWnS6ZXUg', 'local_port': 18381},
-        {'key': 'de',     'host': '150.241.106.238', 'password': 'alexander77',    'local_port': 18382},
-        {'key': 'fin',    'host': '150.241.88.243',  'password': 'alexander77',    'local_port': 18383},
+        {'key': host_to_id.get('212.15.49.151', 'russia'), 'host': '212.15.49.151',  'password': 'PVJXSWnS6ZXUg', 'local_port': 18381},
+        {'key': host_to_id.get('150.241.106.238', 'de'),   'host': '150.241.106.238', 'password': 'alexander77',    'local_port': 18382},
+        {'key': host_to_id.get('150.241.88.243', 'fin'),   'host': '150.241.88.243',  'password': 'alexander77',    'local_port': 18383},
     ]
     BRIDGE_UUID = '3b5ba9bb-c766-46a4-8485-a3a5e2bddaeb'
 

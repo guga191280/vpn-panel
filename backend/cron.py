@@ -313,14 +313,14 @@ def collect_connection_logs():
                     ip = details.get('ip', '')
                     dup = db.execute(
                         "SELECT id FROM audit_log WHERE action='connection_fail' AND details LIKE ? AND created_at > ?",
-                        (f'%{ip}%', now - 300)
+                        (f'%{ip}%', now - 600)
                     ).fetchone()
                     if dup:
                         continue
                 elif event_type == 'connection_ok':
                     dup = db.execute(
                         "SELECT id FROM audit_log WHERE action='connection_ok' AND details LIKE ? AND created_at > ?",
-                        (f'%{username}%{node["name"]}%', now - 300)
+                        (f'%{username}%{node["name"]}%', now - 600)
                     ).fetchone()
                     if dup:
                         continue

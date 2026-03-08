@@ -1202,7 +1202,23 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 (function(){
 var TOKEN = localStorage.getItem('vpn_token') || '';
 var ROLE = localStorage.getItem('vpn_role') || 'admin';
-var _users = [];
+var _users = [], _displayUsers = [];
+
+var _sortCol = 'created_at', _sortDir = -1;
+window.sortUsers = function sortUsers(col){
+  if(_sortCol===col){ _sortDir*=-1; } else { _sortCol=col; _sortDir=-1; }
+  document.querySelectorAll('.sort-arrow').forEach(function(el){ el.textContent='⇅'; });
+  var arrow = document.getElementById('sa-'+col);
+  if(arrow) arrow.textContent = _sortDir>0 ? '▲' : '▼';
+  var sorted = _displayUsers.slice().sort(function(a,b){
+    var av=a[col]||0, bv=b[col]||0;
+    if(col==='username'){ av=a.username||''; bv=b.username||''; return _sortDir*(av<bv?-1:av>bv?1:0); }
+    if(col==='status'){ av=a.status||''; bv=b.status||''; return _sortDir*(av<bv?-1:av>bv?1:0); }
+    return _sortDir*(av-bv);
+  });
+  renderUsers(sorted);
+}
+
 
 function toast(msg, dur) {
   var t = document.getElementById('toast');
@@ -1447,10 +1463,11 @@ function renderUsers(users) {
     html += '<button class="btn btn-danger btn-sm" data-i="'+i+'" data-a="del">🗑</button>';
     html += '</div></td></tr>';
   });
+  _displayUsers = users;
   tb.innerHTML = html;
   tb.querySelectorAll('[data-a]').forEach(function(btn){
     btn.addEventListener('click', function(){
-      var u = _users[parseInt(this.getAttribute('data-i'))];
+      var u = _displayUsers[parseInt(this.getAttribute('data-i'))];
       var a = this.getAttribute('data-a');
       if(a==='keys') showKeys(u);
       else if(a==='stats') showUserStats(u);
@@ -1618,7 +1635,8 @@ function loadBridges() {
       html += '<td style="font-size:12px;color:var(--muted)">'+new Date(b.created_at*1000).toLocaleDateString('ru')+'</td>';
       html += '<td><button class="btn btn-danger btn-sm" onclick="delBridge('+b.id+')">🗑</button></td></tr>';
     });
-    tb.innerHTML = html;
+    _displayUsers = users;
+  tb.innerHTML = html;
   });
 }
 
@@ -1676,7 +1694,8 @@ function loadHosts() {
       html += '<button class="btn btn-danger btn-sm" onclick="delHost('+h.id+')">🗑</button>';
       html += '</div></td></tr>';
     });
-    tb.innerHTML = html;
+    _displayUsers = users;
+  tb.innerHTML = html;
     // Сохраняем данные хостов для редактирования
     document.getElementById('hosts-tb')._hosts = hosts;
   });
@@ -1759,7 +1778,8 @@ function loadTraffic() {
         html += '<td class="mono">'+fmtDate(u.expire_at)+'</td>';
         html += '</tr>';
       });
-      tb.innerHTML = html;
+      _displayUsers = users;
+  tb.innerHTML = html;
     }
   });
 }
@@ -1794,7 +1814,8 @@ function loadAdmins() {
       html += '<td style="font-size:12px;color:var(--muted)">'+new Date(a.created_at*1000).toLocaleDateString('ru')+'</td>';
       html += '<td><button class="btn btn-danger btn-sm" onclick="delAdmin('+a.id+')">🗑</button></td></tr>';
     });
-    tb.innerHTML = html;
+    _displayUsers = users;
+  tb.innerHTML = html;
   });
 }
 
@@ -1828,7 +1849,8 @@ function loadBots() {
       html += '<td style="font-size:12px;color:var(--muted)">'+new Date(b.created_at*1000).toLocaleDateString('ru')+'</td>';
       html += '<td><button class="btn btn-danger btn-sm" onclick="delBot('+b.id+')">🗑</button></td></tr>';
     });
-    tb.innerHTML = html;
+    _displayUsers = users;
+  tb.innerHTML = html;
   });
 }
 
@@ -2534,19 +2556,6 @@ document.getElementById('btn-submit-edit-user').onclick = function(){
   });
 };
 
-var _sortCol = 'created_at', _sortDir = -1;
-function sortUsers(col){
-  if(_sortCol===col){ _sortDir*=-1; } else { _sortCol=col; _sortDir=-1; }
-  document.querySelectorAll('.sort-arrow').forEach(function(el){ el.textContent='⇅'; });
-  var arrow = document.getElementById('sa-'+col);
-  if(arrow) arrow.textContent = _sortDir>0 ? '▲' : '▼';
-  var sorted = _users.slice().sort(function(a,b){
-    var av=a[col]||0, bv=b[col]||0;
-    if(col==='username'){ av=a.username||''; bv=b.username||''; return _sortDir*(av<bv?-1:av>bv?1:0); }
-    return _sortDir*(av-bv);
-  });
-  renderUsers(sorted);
-}
 </script>
 
 <!-- Modal User Stats -->

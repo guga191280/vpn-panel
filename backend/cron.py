@@ -244,7 +244,8 @@ def collect_connection_logs():
             ssh.connect(node['host'], username='root', password=node['password'], timeout=10)
             
             # Читаем последние 200 строк лога
-            _, stdout, _ = ssh.exec_command('tail -200 /var/log/sing-box.log')
+            # Читаем строки за последние 6 минут
+            _, stdout, _ = ssh.exec_command('tail -5000 /var/log/sing-box.log')
             lines = stdout.read().decode(errors='ignore').splitlines()
             ssh.close()
             

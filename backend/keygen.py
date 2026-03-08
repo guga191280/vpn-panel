@@ -67,7 +67,7 @@ def generate_keys(uuid):
                 keys[f"vless_{remark}"] = key
 
         elif tag == "hysteria2-in":
-            key = f"hysteria2://{uuid}@{address}:{port}?insecure=1&sni={sni}#{remark}"
+            key = f"hysteria2://{uuid}@{address}:{port}?sni={sni}#{remark}"
             keys[f"hy2_{remark}"] = key
 
     if keys:

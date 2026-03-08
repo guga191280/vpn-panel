@@ -201,7 +201,7 @@ class UserCreate(BaseModel):
     node_ids: List[str] = []; note: str = ""
 
 class UserUpdate(BaseModel):
-    status: Optional[str] = None; data_limit_mb: Optional[float] = None
+    username: Optional[str] = None; status: Optional[str] = None; data_limit_mb: Optional[float] = None
     expire_days: Optional[int] = None; node_ids: Optional[List[str]] = None
     note: Optional[str] = None
 
@@ -272,6 +272,7 @@ def create_user(user: UserCreate, admin=Depends(verify_token)):
 def update_user(user_id: str, user: UserUpdate, admin=Depends(verify_token)):
     conn = get_db()
     updates = {}
+    if user.username: updates["username"] = user.username
     if user.status: updates["status"] = user.status
     if user.data_limit_mb is not None: updates["data_limit"] = int(user.data_limit_mb * 1024**2)
     if user.expire_days is not None: updates["expire_at"] = int((datetime.now() + timedelta(days=user.expire_days)).timestamp())

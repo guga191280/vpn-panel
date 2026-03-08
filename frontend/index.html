@@ -232,6 +232,14 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+.th-sort{cursor:pointer;user-select:none;}
+.th-sort:hover{color:var(--accent);}
+.sort-arrow{margin-left:4px;opacity:0.4;font-size:10px;}
+.badge-free{background:#1a2e1a;color:#4caf50;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;}
+.badge-premium{background:#1a1f2e;color:#2196f3;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;}
+.badge-vip{background:#2e1f0a;color:#ff9800;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;}
+</style>
 </head>
 <body>
 
@@ -1423,10 +1431,17 @@ function renderUsers(users) {
     html += '<td><div class="mono">'+fmtBytes(u.data_used||0)+' / '+(u.data_limit?fmtBytes(u.data_limit):'∞')+'</div>';
     if(u.data_limit) html += '<div class="progress"><div class="progress-bar '+bc+'" style="width:'+pct+'%"></div></div>';
     html += '</td>';
+    var lim = u.data_limit ? Math.round(u.data_limit/1024/1024) : 0;
+    var badge, label;
+    if(lim===0){ badge='badge-vip'; label='👑 VIP ∞'; }
+    else if(lim>=1000){ badge='badge-premium'; label='⭐ '+Math.round(lim/1024)+'GB'; }
+    else{ badge='badge-free'; label='🆓 '+lim+'MB'; }
+    html += '<td><span class="'+badge+'">'+label+'</span></td>';
     html += '<td class="mono">'+fmtDate(u.expire_at)+'</td>';
     html += '<td><div style="display:flex;gap:4px">';
     html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="keys">🔑</button>';
     html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="stats">📊</button>';
+    html += '<button class="btn btn-warning btn-sm" data-i="'+i+'" data-a="edit" title="Редактировать">✏️</button>';
     html += '<button class="btn btn-success btn-sm" data-i="'+i+'" data-a="extend">+⏱</button>';
     html += '<button class="btn btn-secondary btn-sm" data-i="'+i+'" data-a="toggle">'+(u.status==='active'?'⏸':'▶️')+'</button>';
     html += '<button class="btn btn-danger btn-sm" data-i="'+i+'" data-a="del">🗑</button>';
@@ -1443,6 +1458,15 @@ function renderUsers(users) {
         document.getElementById('extend-uid').value = u.id;
         document.getElementById('extend-username').textContent = u.username;
         openModal('modal-extend');
+      }
+      else if(a==='edit'){
+        document.getElementById('edit-uid').value = u.id;
+        document.getElementById('edit-username').value = u.username;
+        document.getElementById('edit-limit').value = u.data_limit ? Math.round(u.data_limit/1024/1024) : 0;
+        var exp = u.expire_at ? new Date(u.expire_at*1000) : new Date();
+        document.getElementById('edit-expire').value = exp.toISOString().split('T')[0];
+        document.getElementById('edit-status').value = u.status || 'active';
+        openModal('modal-edit-user');
       }
       else if(a==='toggle') api('PUT','/users/'+u.id,{status:u.status==='active'?'disabled':'active'}).then(loadUsers);
       else if(a==='del'){
@@ -2489,6 +2513,40 @@ window.showUserStats = showUserStats;
 window.openModal = openModal;
 window.closeModal = closeModal;
 })();
+
+document.getElementById('btn-submit-edit-user').onclick = function(){
+  var uid = document.getElementById('edit-uid').value;
+  var username = document.getElementById('edit-username').value.trim();
+  var limit = parseFloat(document.getElementById('edit-limit').value) || 0;
+  var expireDate = document.getElementById('edit-expire').value;
+  var status = document.getElementById('edit-status').value;
+  var expireTs = expireDate ? Math.floor(new Date(expireDate).getTime()/1000) : null;
+  var days = expireTs ? Math.ceil((expireTs - Date.now()/1000) / 86400) : 30;
+  api('PUT','/users/'+uid,{
+    username: username,
+    data_limit_mb: limit,
+    expire_days: days,
+    status: status
+  }).then(function(){
+    closeModal('modal-edit-user');
+    loadUsers();
+    toast('✅ Пользователь обновлён!');
+  });
+};
+
+var _sortCol = 'created_at', _sortDir = -1;
+function sortUsers(col){
+  if(_sortCol===col){ _sortDir*=-1; } else { _sortCol=col; _sortDir=-1; }
+  document.querySelectorAll('.sort-arrow').forEach(function(el){ el.textContent='⇅'; });
+  var arrow = document.getElementById('sa-'+col);
+  if(arrow) arrow.textContent = _sortDir>0 ? '▲' : '▼';
+  var sorted = _users.slice().sort(function(a,b){
+    var av=a[col]||0, bv=b[col]||0;
+    if(col==='username'){ av=a.username||''; bv=b.username||''; return _sortDir*(av<bv?-1:av>bv?1:0); }
+    return _sortDir*(av-bv);
+  });
+  renderUsers(sorted);
+}
 </script>
 
 <!-- Modal User Stats -->
@@ -2525,5 +2583,38 @@ window.closeModal = closeModal;
   </div>
 </div>
 
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Редактирование пользователя</div>
+      <div class="modal-close" onclick="closeModal('modal-edit-user')">×</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-uid">
+      <div class="form-group"><label class="form-label">Имя пользователя</label>
+        <input id="edit-username" class="form-input" type="text" placeholder="username">
+      </div>
+      <div class="form-group"><label class="form-label">Лимит трафика (MB, 0 = безлимит)</label>
+        <input id="edit-limit" class="form-input" type="number" placeholder="100">
+      </div>
+      <div class="form-group"><label class="form-label">Дата истечения</label>
+        <input id="edit-expire" class="form-input" type="date">
+      </div>
+      <div class="form-group"><label class="form-label">Статус</label>
+        <select id="edit-status" class="form-input">
+          <option value="active">active</option>
+          <option value="disabled">disabled</option>
+          <option value="overlimit">overlimit</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-user')">Отмена</button>
+      <button class="btn btn-primary" id="btn-submit-edit-user">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

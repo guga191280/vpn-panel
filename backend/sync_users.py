@@ -36,7 +36,7 @@ def sync_main_node(uuids):
             config['experimental']['v2ray_api']['stats']['users'] = all_names
         with open('/etc/sing-box/config.json', 'w') as f:
             json.dump(config, f, indent=2)
-        os.system('systemctl restart sing-box')
+        os.system('systemctl restart sing-box && sleep 4')
         print(f'✅ Main: {len(uuids)} пользователей')
     except Exception as e:
         print(f'❌ Main ошибка: {e}')
@@ -82,7 +82,7 @@ def sync_remote_node(node):
         with sftp.open('/etc/sing-box/config.json', 'w') as f:
             f.write(json.dumps(cfg, indent=2))
         sftp.close()
-        ssh.exec_command('systemctl restart sing-box')
+        ssh.exec_command('systemctl restart sing-box && sleep 4')
         ssh.close()
         print(f'✅ {name}: {len(uuids)} пользователей')
     except Exception as e:

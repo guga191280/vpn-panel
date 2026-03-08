@@ -59,14 +59,28 @@ def get_ssh(host, password):
 def ensure_tunnel(node):
     host = node['host']
     local_port = node['local_port']
-    try:
-        s = socket.socket()
-        s.settimeout(1)
-        s.connect(('127.0.0.1', local_port))
-        s.close()
-        return True
-    except:
-        pass
+    # Проверяем что туннель живой через gRPC пинг
+    if host in _tunnel_servers:
+        try:
+            s = socket.socket()
+            s.settimeout(1)
+            s.connect(('127.0.0.1', local_port))
+            s.close()
+            # Дополнительно проверяем что SSH транспорт активен
+            if host in _ssh_clients:
+                t = _ssh_clients[host].get_transport()
+                if t and t.is_active():
+                    return True
+        except:
+            pass
+        # Туннель мёртв - закрываем всё
+        try: _tunnel_servers[host].close()
+        except: pass
+        try: _ssh_clients[host].close()
+        except: pass
+        _tunnel_servers.pop(host, None)
+        _ssh_clients.pop(host, None)
+        time.sleep(2)  # ждём пока sing-box поднимется
     try:
         ssh = get_ssh(host, node['password'])
         transport = ssh.get_transport()
@@ -180,7 +194,7 @@ def monitor_loop():
             collect_and_save()
         except Exception as e:
             print(f"❌ {e}")
-        time.sleep(30)
+        time.sleep(3)
 
 if __name__ == '__main__':
     monitor_loop()

@@ -11,6 +11,12 @@ BOT_TOKEN = "8719621968:AAFWt_3QHq7f-5FRSG2MZlpt0s7EBdCgCzA"
 PANEL_URL = "https://panel.alexanderoff.ru:8444"
 PANEL_API_TOKEN = "5c58fb006cee1476fa7e4d27d97c79e8c177bf271fe89665da2a4016d07b1eff"
 ADMIN_IDS = [669805176]
+ADMIN_ID = 669805176
+
+async def notify_admin(text: str):
+    try:
+        await bot.send_message(ADMIN_ID, text, parse_mode="HTML")
+    except: pass
 SUPPORT = "https://t.me/vpnruss2"
 BOT_USERNAME = "HAPPVIPbot"
 DB_PATH = "/opt/vpn_panel/bot/referrals.db"
@@ -271,6 +277,7 @@ async def cmd_start(msg: Message):
             if referrer_id != msg.from_user.id:
                 db_save_referral(referrer_id, msg.from_user.id)
         except: pass
+    await notify_admin(f"👤 <b>Новый визит</b>\nID: <code>{msg.from_user.id}</code>\nИмя: {msg.from_user.full_name}\nUsername: @{msg.from_user.username or '-'}")
     await msg.answer(txt_welcome("happVIP"), reply_markup=kb_main(), parse_mode="HTML")
 @dp.callback_query(F.data == "main")
 async def cb_main(cb: types.CallbackQuery):
@@ -307,6 +314,7 @@ async def cb_buy_trial(cb: types.CallbackQuery):
 async def cb_confirm_trial(cb: types.CallbackQuery):
     await cb.answer()
     tg_id = cb.from_user.id
+    await notify_admin(f"🎁 <b>Запрос триала</b>\nID: <code>{tg_id}</code>\nИмя: {cb.from_user.full_name}\nUsername: @{cb.from_user.username or '-'}")
     existing = await get_user_by_tg(tg_id)
     if existing:
         await cb.message.edit_text("ℹ️ <b>У вас уже есть аккаунт!</b>\n\nИспользуйте <b>🔑 Мой VPN</b>.", reply_markup=kb_my_vpn(), parse_mode="HTML"); return
@@ -341,6 +349,7 @@ async def on_payment(msg: Message):
     plan_key = parts[1]
     plan = PLANS.get(plan_key)
     if not plan: return
+    await notify_admin(f"💳 <b>Оплата!</b>\nID: <code>{msg.from_user.id}</code>\nИмя: {msg.from_user.full_name}\nUsername: @{msg.from_user.username or chr(45)}")
     await msg.answer("⭐ <b>Оплата получена!</b>\n\n⏳ Активируем ваш VPN...", parse_mode="HTML")
     tg_id = msg.from_user.id
     existing = await get_user_by_tg(tg_id)
@@ -395,6 +404,25 @@ async def cb_my_keys(cb: types.CallbackQuery):
 async def cb_howto(cb: types.CallbackQuery):
     await cb.message.edit_text(txt_howto(), reply_markup=kb_back(), parse_mode="HTML", disable_web_page_preview=True)
     await cb.answer()
+CHANNEL_ID = "@vpnruss1"
+
+@dp.message(F.photo)
+async def get_photo_id(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS: return
+    file_id = msg.photo[-1].file_id
+    await msg.answer(f"file_id: <code>{file_id}</code>", parse_mode="HTML")
+
+@dp.message(Command("post"))
+async def cmd_post(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS: return
+    text = "🚀 <b>HAPPVIP — Premium VPN</b>\n══════════════════\n⚡ VLESS Reality + Hysteria2\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n📦 200 ГБ · 30 дней\n💳 Цена: ⭐ 250 Telegram Stars\n══════════════════\n🎁 Бесплатный тест — 100 МБ"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💎 ПРЕМИУМ", url=f"https://t.me/{BOT_USERNAME}")],
+        [InlineKeyboardButton(text="🎁 Бесплатный тест", url=f"https://t.me/{BOT_USERNAME}?start=trial")],
+    ])
+    await bot.send_photo(CHANNEL_ID, photo="AgACAgIAAxkBAAOMaayjsbTqEPnhhcCuyJuICYXdvucAAmgRaxtOOGlJT1Lpk-_siqYBAAMCAAN5AAM6BA", caption=text, reply_markup=kb, parse_mode="HTML")
+    await msg.answer("✅ Пост отправлен в канал!")
+
 @dp.message(Command("admin"))
 async def cmd_admin(msg: Message):
     if msg.from_user.id not in ADMIN_IDS: return

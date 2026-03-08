@@ -526,7 +526,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       </div>
       <div class="table-card">
         <table>
-          <thead><tr><th>Пользователь</th><th>Статус</th><th>Трафик</th><th>Истекает</th><th>Действия</th></tr></thead>
+          <thead><tr><th class="th-sort" onclick="sortUsers('username')">ПОЛЬЗОВАТЕЛЬ <span class="sort-arrow" id="sa-username">⇅</span></th><th class="th-sort" onclick="sortUsers('status')">СТАТУС <span class="sort-arrow" id="sa-status">⇅</span></th><th class="th-sort" onclick="sortUsers('data_used')">ТРАФИК <span class="sort-arrow" id="sa-data_used">⇅</span></th><th class="th-sort" onclick="sortUsers('data_limit')">ТАРИФ <span class="sort-arrow" id="sa-data_limit">⇅</span></th><th class="th-sort" onclick="sortUsers('expire_at')">ИСТЕКАЕТ <span class="sort-arrow" id="sa-expire_at">⇅</span></th><th>ДЕЙСТВИЯ</th></tr></thead>
           <tbody id="users-tb"></tbody>
         </table>
       </div>

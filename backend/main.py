@@ -329,10 +329,14 @@ def get_stats(admin=Depends(verify_token)):
     total_nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
     online_nodes = conn.execute("SELECT COUNT(*) FROM nodes WHERE status='online'").fetchone()[0]
     total_traffic = conn.execute("SELECT SUM(data_used) FROM users").fetchone()[0] or 0
+    # conn.close() moved below
+    expired_users = conn.execute("SELECT COUNT(*) FROM users WHERE status='expired'").fetchone()[0]
+    overlimit_users = conn.execute("SELECT COUNT(*) FROM users WHERE status='overlimit'").fetchone()[0]
     conn.close()
     return {"total_users": total_users, "active_users": active_users,
             "total_nodes": total_nodes, "online_nodes": online_nodes,
-            "total_traffic_gb": round(total_traffic / 1024**3, 2)}
+            "total_traffic_gb": round(total_traffic / 1024**3, 2),
+            "expired_users": expired_users, "overlimit_users": overlimit_users}
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

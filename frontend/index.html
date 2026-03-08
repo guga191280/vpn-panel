@@ -2445,7 +2445,13 @@ function loadAuditPage(){
       html+='<tr style="background:'+bg+';border-top:1px solid var(--border)">';
       html+='<td style="padding:10px 16px;font-size:12px;color:var(--muted);white-space:nowrap">'+dt+'</td>';
       html+='<td style="padding:10px 16px;font-size:13px"><b style="color:var(--accent)">'+r.admin+'</b></td>';
-      html+='<td style="padding:10px 16px;font-size:13px">'+r.action+'</td>';
+      var actionLabel = r.action;
+      if(r.action==='connection_ok') actionLabel='<span style="color:var(--green)">✅ Подключился</span>';
+      else if(r.action==='connection_fail') actionLabel='<span style="color:var(--red)">❌ Ошибка подключения</span>';
+      else if(r.action==='Вход в систему') actionLabel='<span style="color:var(--accent)">🔑 Вход в систему</span>';
+      else if(r.action==='Создан пользователь') actionLabel='<span style="color:var(--green)">👤 Создан пользователь</span>';
+      else if(r.action==='Удалён пользователь') actionLabel='<span style="color:var(--red)">🗑 Удалён пользователь</span>';
+      html+='<td style="padding:10px 16px;font-size:13px">'+actionLabel+'</td>';
       html+='<td style="padding:10px 16px;font-size:12px;color:var(--muted)">'+((r.details&&r.details!=='null')?r.details:'')+'</td>';
       html+='</tr>';
     });

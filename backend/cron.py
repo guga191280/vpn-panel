@@ -207,6 +207,7 @@ def run():
     while True:
         try:
             collect_connections()
+            collect_connection_logs()
             expired, overlimit = check_expired_users()
             extended = auto_extend_users()
             notify_expiring()
@@ -218,3 +219,124 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+def collect_connection_logs():
+    """Собирает логи подключений со всех нод и сохраняет в audit_log"""
+    import paramiko
+    
+    NODE_CONFIGS = [
+        {'key': 'russia', 'host': '212.15.49.151',  'password': 'PVJXSWnS6ZXUg',  'name': 'russia'},
+        {'key': 'de',     'host': '150.241.106.238', 'password': 'alexander77',     'name': 'de'},
+        {'key': 'fin',    'host': '150.241.88.243',  'password': 'alexander77',     'name': 'fin'},
+    ]
+    
+    db = get_db()
+    
+    # Получаем маппинг UUID -> username
+    users = db.execute("SELECT id, username FROM users").fetchall()
+    uuid_to_name = {u['id']: u['username'] for u in users}
+    
+    # Последняя обработанная временная метка для каждой ноды
+    for node in NODE_CONFIGS:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(node['host'], username='root', password=node['password'], timeout=10)
+            
+            # Читаем последние 200 строк лога
+            _, stdout, _ = ssh.exec_command('tail -200 /var/log/sing-box.log')
+            lines = stdout.read().decode(errors='ignore').splitlines()
+            ssh.close()
+            
+            now = int(time.time())
+            
+            for line in lines:
+                event_type = None
+                username = None
+                details = {}
+                
+                # Успешное подключение с UUID
+                # INFO [...] inbound/vless[vless-in]: [UUID] inbound connection to HOST
+                if 'inbound connection to' in line and '] inbound connection' in line:
+                    import re
+                    # Извлекаем UUID
+                    uuid_match = re.search(r'\[([0-9a-f-]{36})\]', line)
+                    if uuid_match:
+                        uuid = uuid_match.group(1)
+                        if uuid in uuid_to_name:
+                            username = uuid_to_name[uuid]
+                            # Протокол
+                            if 'vless' in line:
+                                proto = 'VLESS'
+                            elif 'hysteria2' in line or 'bridge' in line:
+                                proto = 'Hysteria2'
+                            else:
+                                proto = 'unknown'
+                            event_type = 'connection_ok'
+                            details = {'proto': proto, 'node': node['name']}
+                
+                # Ошибка подключения - неверный ключ/EOF
+                elif 'process connection from' in line and ('EOF' in line or 'error' in line.lower()):
+                    import re
+                    ip_match = re.search(r'from (\d+\.\d+\.\d+\.\d+)', line)
+                    ip = ip_match.group(1) if ip_match else 'unknown'
+                    if 'vless' in line:
+                        proto = 'VLESS'
+                    elif 'hysteria' in line:
+                        proto = 'Hysteria2'
+                    else:
+                        proto = 'unknown'
+                    reason = 'EOF - неверный ключ или несовместимый клиент'
+                    if 'i/o timeout' in line:
+                        reason = 'Timeout'
+                    event_type = 'connection_fail'
+                    username = f'unknown ({ip})'
+                    details = {'proto': proto, 'node': node['name'], 'reason': reason, 'ip': ip}
+                
+                if not event_type:
+                    continue
+                
+                # Парсим время из лога
+                import re
+                time_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})', line)
+                if not time_match:
+                    continue
+                
+                # Проверяем дубликаты - не добавляем если уже есть такая запись
+                existing = db.execute(
+                    "SELECT id FROM audit_log WHERE action=? AND details LIKE ? AND created_at > ?",
+                    (event_type, f'%{node["name"]}%', now - 600)
+                ).fetchone()
+                
+                # Дедупликация - не добавляем одинаковые события за последние 5 мин
+                if event_type == 'connection_fail':
+                    ip = details.get('ip', '')
+                    dup = db.execute(
+                        "SELECT id FROM audit_log WHERE action='connection_fail' AND details LIKE ? AND created_at > ?",
+                        (f'%{ip}%', now - 300)
+                    ).fetchone()
+                    if dup:
+                        continue
+                elif event_type == 'connection_ok':
+                    dup = db.execute(
+                        "SELECT id FROM audit_log WHERE action='connection_ok' AND details LIKE ? AND created_at > ?",
+                        (f'%{username}%{node["name"]}%', now - 300)
+                    ).fetchone()
+                    if dup:
+                        continue
+                
+                detail_str = f"proto: {details.get('proto','?')}, node: {details.get('node','?')}"
+                if 'reason' in details:
+                    detail_str += f", reason: {details['reason']}"
+                
+                full_detail = f"{username or 'unknown'} | {detail_str}"
+                db.execute(
+                    "INSERT INTO audit_log (admin, action, details, created_at) VALUES (?,?,?,?)",
+                    ('system', event_type, full_detail, now)
+                )
+        
+        except Exception as e:
+            logging.warning(f'collect_logs [{node["name"]}]: {e}')
+    
+    db.commit()
+    db.close()

@@ -66,6 +66,19 @@ def generate_keys(uuid):
                       f"&type=tcp&headerType=none#{remark}")
                 keys[f"vless_{remark}"] = key
 
+        elif tag == "vless-grpc-in":
+            node = next((n for n in nodes.values() if n["host"] == address), None)
+            if node:
+                pbk = node.get("public_key","") or ""
+                sid = node.get("short_id","") or ""
+            else:
+                pbk = sid = ""
+            if pbk and sid:
+                key = (f"vless://{uuid}@{address}:{port}"
+                      f"?encryption=none&security=reality"
+                      f"&sni={sni}&fp=chrome&pbk={pbk}&sid={sid}"
+                      f"&type=grpc&serviceName=xyz&mode=gun#{remark}")
+                keys[f"vless_grpc_{remark}"] = key
         elif tag == "hysteria2-in":
             key = f"hysteria2://{uuid}@{address}:{port}?sni={sni}&insecure=1#{remark}"
             keys[f"hy2_{remark}"] = key

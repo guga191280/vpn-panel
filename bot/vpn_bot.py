@@ -412,16 +412,32 @@ async def get_photo_id(msg: Message):
     file_id = msg.photo[-1].file_id
     await msg.answer(f"file_id: <code>{file_id}</code>", parse_mode="HTML")
 
+PHOTO_ID = "AgACAgIAAxkBAAOMaayjsbTqEPnhhcCuyJuICYXdvucAAmgRaxtOOGlJT1Lpk-_siqYBAAMCAAN5AAM6BA"
+
+def get_post_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="\U0001f48e PREMIUM", url=f"https://t.me/{BOT_USERNAME}")],
+        [InlineKeyboardButton(text="\U0001f381 Free trial", url=f"https://t.me/{BOT_USERNAME}?start=trial")],
+    ])
+
+@dp.message(Command("testpost"))
+async def cmd_testpost(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS: return
+    if not msg.reply_to_message or not msg.reply_to_message.text:
+        await msg.answer("\u274c \u041e\u0442\u0432\u0435\u0442\u044c\u0442\u0435 \u043d\u0430 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435 \u0441 \u0442\u0435\u043a\u0441\u0442\u043e\u043c \u043f\u043e\u0441\u0442\u0430")
+        return
+    text = msg.reply_to_message.html_text
+    await msg.answer_photo(PHOTO_ID, caption=text, reply_markup=get_post_kb(), parse_mode="HTML")
+
 @dp.message(Command("post"))
 async def cmd_post(msg: Message):
     if msg.from_user.id not in ADMIN_IDS: return
-    text = "🚀 <b>HAPPVIP — Premium VPN</b>\n══════════════════\n⚡ VLESS Reality + Hysteria2\n🌍 Серверы: 🇷🇺 · 🇩🇪 · 🇫🇮\n📦 200 ГБ · 30 дней\n💳 Цена: ⭐ 250 Telegram Stars\n══════════════════\n🎁 Бесплатный тест — 100 МБ"
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💎 ПРЕМИУМ", url=f"https://t.me/{BOT_USERNAME}")],
-        [InlineKeyboardButton(text="🎁 Бесплатный тест", url=f"https://t.me/{BOT_USERNAME}?start=trial")],
-    ])
-    await bot.send_photo(CHANNEL_ID, photo="AgACAgIAAxkBAAOMaayjsbTqEPnhhcCuyJuICYXdvucAAmgRaxtOOGlJT1Lpk-_siqYBAAMCAAN5AAM6BA", caption=text, reply_markup=kb, parse_mode="HTML")
-    await msg.answer("✅ Пост отправлен в канал!")
+    if not msg.reply_to_message or not msg.reply_to_message.text:
+        await msg.answer("\u274c \u041e\u0442\u0432\u0435\u0442\u044c\u0442\u0435 \u043d\u0430 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435 \u0441 \u0442\u0435\u043a\u0441\u0442\u043e\u043c \u043f\u043e\u0441\u0442\u0430")
+        return
+    text = msg.reply_to_message.html_text
+    await bot.send_photo(CHANNEL_ID, photo=PHOTO_ID, caption=text, reply_markup=get_post_kb(), parse_mode="HTML")
+    await msg.answer("\u2705 \u041f\u043e\u0441\u0442 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d!")
 
 @dp.message(Command("admin"))
 async def cmd_admin(msg: Message):

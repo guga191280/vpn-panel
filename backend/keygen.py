@@ -79,11 +79,7 @@ def generate_keys(uuid):
                       f"&sni={sni}&fp=chrome&pbk={pbk}&sid={sid}"
                       f"&type=grpc&serviceName=xyz&mode=gun#{remark}")
                 keys[f"vless_grpc_{remark}"] = key
-        elif tag == "vless-ws-in":
-            key = (f"vless://{uuid}@{address}:{port}"
-                  f"?encryption=none&security=none"
-                  f"&type=ws&path=%2Fvless&host={sni}#{remark}")
-            keys[f"vless_ws_{remark}"] = key
+
         elif tag == "hysteria2-in":
             key = f"hysteria2://{uuid}@{address}:{port}?sni={sni}&insecure=1#{remark}"
             keys[f"hy2_{remark}"] = key
